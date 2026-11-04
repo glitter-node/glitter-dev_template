@@ -1,0 +1,953 @@
+@layer base {
+  :root {
+    --glitter-background: #f6f8fc;
+    --glitter-surface: #ffffff;
+    --glitter-elevated: #f0f4fa;
+    --glitter-border: #e2e8f0;
+    --glitter-text: #172033;
+    --glitter-muted: #475569;
+    --glitter-footer-muted: #475569;
+    --glitter-badge-background: #f0f4fa;
+    --glitter-badge-text: #172033;
+    --glitter-primary: #2563eb;
+    --glitter-button-primary: #4163eb;
+    --glitter-button-primary-hover: #3152d4;
+    --glitter-button-primary-active: #2745b7;
+    --glitter-button-secondary: #edf2ff;
+    --glitter-button-secondary-hover: #dfe8ff;
+    --glitter-button-secondary-active: #d1deff;
+    --glitter-button-secondary-text: #3154ce;
+    --glitter-button-ghost-hover: rgba(65, 99, 235, 0.1);
+    --glitter-button-ghost-active: rgba(65, 99, 235, 0.16);
+    --glitter-hero-accent: #4f46e5;
+    --glitter-extension: #7c3aed;
+    --glitter-project: #0d9488;
+    --glitter-upcoming: #b45309;
+    --glitter-focus: #2563eb;
+    --glitter-shadow: 0 16px 36px rgba(23, 32, 51, 0.08);
+    --glitter-shadow-strong: 0 24px 56px rgba(23, 32, 51, 0.14);
+  }
+
+  .dark {
+    --glitter-background: #0b1120;
+    --glitter-surface: #172033;
+    --glitter-elevated: #202c40;
+    --glitter-border: #334155;
+    --glitter-text: #f1f5f9;
+    --glitter-muted: #94a3b8;
+    --glitter-footer-muted: #94a3b8;
+    --glitter-badge-background: #202c40;
+    --glitter-badge-text: #f1f5f9;
+    --glitter-primary: #60a5fa;
+    --glitter-button-primary: #7895ff;
+    --glitter-button-primary-hover: #91a8ff;
+    --glitter-button-primary-active: #aabdff;
+    --glitter-button-primary-text: #0b1120;
+    --glitter-button-secondary: #24345f;
+    --glitter-button-secondary-hover: #2e4278;
+    --glitter-button-secondary-active: #3a4f8e;
+    --glitter-button-secondary-text: #d9e1ff;
+    --glitter-button-ghost-hover: rgba(120, 149, 255, 0.16);
+    --glitter-button-ghost-active: rgba(120, 149, 255, 0.24);
+    --glitter-hero-accent: #a78bfa;
+    --glitter-extension: #a78bfa;
+    --glitter-project: #2dd4bf;
+    --glitter-upcoming: #fbbf24;
+    --glitter-focus: #60a5fa;
+    --glitter-shadow: 0 18px 40px rgba(2, 6, 23, 0.28);
+    --glitter-shadow-strong: 0 26px 64px rgba(2, 6, 23, 0.42);
+  }
+}
+
+@layer components {
+  .glitter-shell,
+  .glitter-content-area {
+    background: var(--glitter-background) !important;
+    color: var(--glitter-text);
+  }
+
+  .glitter-home-page,
+  .glitter-catalog-page,
+  .glitter-product-page,
+  .glitter-journal-page,
+  .glitter-popular-page {
+    color: var(--glitter-text);
+  }
+
+  .glitter-header {
+    background: rgba(255, 255, 255, 0.94) !important;
+    border-color: var(--glitter-border) !important;
+    box-shadow: 0 1px 0 rgba(23, 32, 51, 0.04), 0 12px 32px rgba(23, 32, 51, 0.06);
+    backdrop-filter: blur(16px);
+  }
+
+  .dark .glitter-header {
+    background: rgba(11, 17, 32, 0.94) !important;
+    box-shadow: 0 1px 0 rgba(148, 163, 184, 0.1), 0 12px 32px rgba(2, 6, 23, 0.2);
+  }
+
+  .glitter-header nav {
+    border-color: var(--glitter-border) !important;
+  }
+
+  .glitter-header nav a[aria-current="page"] {
+    background: var(--glitter-primary) !important;
+    color: #ffffff !important;
+  }
+
+  .dark .glitter-header nav a[aria-current="page"] {
+    background: var(--glitter-primary) !important;
+    color: #0b1120 !important;
+  }
+
+  .glitter-header a:hover,
+  .glitter-header button:hover {
+    color: var(--glitter-primary);
+  }
+
+  .glitter-shell :focus-visible,
+  .glitter-shell a:focus-visible,
+  .glitter-shell button:focus-visible,
+  .glitter-shell input:focus-visible,
+  .glitter-shell select:focus-visible {
+    outline: 3px solid var(--glitter-focus) !important;
+    outline-offset: 3px;
+  }
+
+  .glitter-button-primary,
+  .glitter-button-secondary,
+  .glitter-button-ghost {
+    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+  }
+
+  .glitter-button-primary {
+    border: 1px solid var(--glitter-button-primary);
+    background: var(--glitter-button-primary);
+    color: var(--glitter-button-primary-text, #ffffff);
+  }
+
+  .glitter-button-primary:hover {
+    border-color: var(--glitter-button-primary-hover);
+    background: var(--glitter-button-primary-hover);
+    color: var(--glitter-button-primary-text, #ffffff);
+  }
+
+  .glitter-button-primary:active {
+    border-color: var(--glitter-button-primary-active);
+    background: var(--glitter-button-primary-active);
+    color: var(--glitter-button-primary-text, #ffffff);
+  }
+
+  .glitter-button-primary:focus-visible,
+  .glitter-button-secondary:focus-visible,
+  .glitter-button-ghost:focus-visible {
+    outline: 3px solid var(--glitter-focus) !important;
+    outline-offset: 3px;
+  }
+
+  .glitter-button-primary:disabled,
+  .glitter-button-primary[aria-disabled="true"],
+  .glitter-button-secondary:disabled,
+  .glitter-button-secondary[aria-disabled="true"],
+  .glitter-button-ghost:disabled,
+  .glitter-button-ghost[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  .glitter-button-secondary {
+    border: 1px solid var(--glitter-button-secondary);
+    background: var(--glitter-button-secondary);
+    color: var(--glitter-button-secondary-text);
+  }
+
+  .glitter-button-secondary:hover {
+    border-color: var(--glitter-button-secondary-hover);
+    background: var(--glitter-button-secondary-hover);
+    color: var(--glitter-button-secondary-text);
+  }
+
+  .glitter-button-secondary:active {
+    border-color: var(--glitter-button-secondary-active);
+    background: var(--glitter-button-secondary-active);
+    color: var(--glitter-button-secondary-text);
+  }
+
+  .glitter-button-ghost {
+    border: 1px solid transparent;
+    background: transparent;
+    color: inherit;
+  }
+
+  .glitter-button-ghost:hover {
+    border-color: transparent;
+    background: var(--glitter-button-ghost-hover);
+    color: var(--glitter-primary);
+  }
+
+  .glitter-button-ghost:active {
+    border-color: transparent;
+    background: var(--glitter-button-ghost-active);
+    color: var(--glitter-primary);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .glitter-button-primary,
+    .glitter-button-secondary,
+    .glitter-button-ghost {
+      transition-duration: 0.01ms;
+    }
+  }
+
+  .glitter-home-page > div,
+  .glitter-catalog-page > div,
+  .glitter-product-page > div,
+  .glitter-journal-page > div,
+  .glitter-popular-page > div {
+    border-color: var(--glitter-border) !important;
+  }
+
+  .glitter-home-page h1,
+  .glitter-home-page h2,
+  .glitter-home-page h3,
+  .glitter-catalog-page h1,
+  .glitter-product-page h1,
+  .glitter-journal-page h1,
+  .glitter-journal-page h2,
+  .glitter-popular-page h1 {
+    color: var(--glitter-text);
+    letter-spacing: -0.025em;
+  }
+
+  .glitter-home-page [class*="text-gray-900"],
+  .glitter-catalog-page [class*="text-gray-900"],
+  .glitter-product-page [class*="text-gray-900"],
+  .glitter-journal-page [class*="text-gray-900"],
+  .glitter-popular-page [class*="text-gray-900"] {
+    color: var(--glitter-text) !important;
+  }
+
+  .glitter-home-page [class*="text-gray-600"],
+  .glitter-home-page [class*="text-gray-500"],
+  .glitter-catalog-page [class*="text-gray-600"],
+  .glitter-catalog-page [class*="text-gray-500"],
+  .glitter-product-page [class*="text-gray-600"],
+  .glitter-product-page [class*="text-gray-500"],
+  .glitter-journal-page [class*="text-gray-600"],
+  .glitter-journal-page [class*="text-gray-500"],
+  .glitter-popular-page [class*="text-gray-600"],
+  .glitter-popular-page [class*="text-gray-500"] {
+    color: var(--glitter-muted) !important;
+  }
+
+  .glitter-home-page [class*="bg-white"],
+  .glitter-catalog-page [class*="bg-white"],
+  .glitter-product-page [class*="bg-white"],
+  .glitter-journal-page [class*="bg-white"],
+  .glitter-popular-page [class*="bg-white"] {
+    background: var(--glitter-surface) !important;
+  }
+
+  .glitter-home-page [class*="border-gray-200"],
+  .glitter-home-page [class*="border-gray-300"],
+  .glitter-catalog-page [class*="border-gray-200"],
+  .glitter-catalog-page [class*="border-gray-300"],
+  .glitter-product-page [class*="border-gray-200"],
+  .glitter-product-page [class*="border-gray-300"],
+  .glitter-journal-page [class*="border-gray-200"],
+  .glitter-journal-page [class*="border-gray-300"],
+  .glitter-popular-page [class*="border-gray-200"],
+  .glitter-popular-page [class*="border-gray-300"] {
+    border-color: var(--glitter-border) !important;
+  }
+
+  .dark .glitter-home-page [class*="bg-gray-800"],
+  .dark .glitter-catalog-page [class*="bg-gray-800"],
+  .dark .glitter-product-page [class*="bg-gray-800"],
+  .dark .glitter-journal-page [class*="bg-gray-800"],
+  .dark .glitter-popular-page [class*="bg-gray-800"] {
+    background: var(--glitter-surface) !important;
+  }
+
+  .dark .glitter-home-page [class*="bg-gray-700"],
+  .dark .glitter-catalog-page [class*="bg-gray-700"],
+  .dark .glitter-product-page [class*="bg-gray-700"],
+  .dark .glitter-journal-page [class*="bg-gray-700"],
+  .dark .glitter-popular-page [class*="bg-gray-700"] {
+    background: var(--glitter-elevated) !important;
+  }
+
+  .glitter-home-page [class~="bg-gray-100"][class~="dark:bg-gray-700"][class~="rounded-full"] {
+    background: var(--glitter-badge-background) !important;
+    color: var(--glitter-badge-text) !important;
+  }
+
+
+  .glitter-hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    border: 1px solid rgba(37, 99, 235, 0.32);
+    background: var(--glitter-elevated) !important;
+    box-shadow: var(--glitter-shadow-strong);
+  }
+
+  .glitter-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    opacity: 0.3;
+    background-image: linear-gradient(rgba(37, 99, 235, 0.14) 1px, transparent 1px), linear-gradient(90deg, rgba(37, 99, 235, 0.14) 1px, transparent 1px);
+    background-size: 2.25rem 2.25rem;
+    mask-image: linear-gradient(120deg, black, transparent 72%);
+  }
+
+  .dark .glitter-hero {
+    border-color: rgba(96, 165, 250, 0.34);
+  }
+
+  .glitter-hero > div {
+    position: relative;
+    z-index: 1;
+  }
+
+  .glitter-hero [class*="text-indigo"] {
+    color: var(--glitter-hero-accent) !important;
+  }
+
+  .glitter-hero h1 {
+    color: #172033 !important;
+  }
+
+  .glitter-hero > div > p:first-child,
+  .glitter-hero > div > p:nth-of-type(2) {
+    color: var(--glitter-hero-accent) !important;
+  }
+
+  .glitter-hero > div > p:nth-of-type(3) {
+    color: #475569 !important;
+  }
+
+  .dark .glitter-hero h1 {
+    color: #f1f5f9 !important;
+  }
+
+  .dark .glitter-hero > div > p:nth-of-type(3) {
+    color: #cbd5e1 !important;
+  }
+
+  .glitter-hero [class*="text-gray-300"],
+  .glitter-hero [class*="text-gray-100"] {
+    color: var(--glitter-muted) !important;
+  }
+
+  .glitter-hero a[class*="bg-indigo"] {
+    background: var(--glitter-primary) !important;
+    color: #ffffff !important;
+  }
+
+  .glitter-hero a[class*="border-gray"] {
+    border-color: var(--glitter-border) !important;
+    color: var(--glitter-text) !important;
+  }
+
+  .glitter-hero .glitter-hero-cta {
+    border: 1px solid var(--glitter-border);
+    background: transparent;
+    color: var(--glitter-text);
+    transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+  }
+
+  .glitter-hero .glitter-hero-cta:hover {
+    border-color: var(--glitter-primary);
+    background: var(--glitter-primary);
+    color: #ffffff;
+  }
+
+  .glitter-hero .glitter-hero-cta:focus-visible {
+    border-color: var(--glitter-focus);
+    background: transparent;
+    color: var(--glitter-text);
+  }
+
+  .glitter-hero .glitter-hero-cta:active {
+    border-color: #1d4ed8;
+    background: #1d4ed8;
+    color: #ffffff;
+  }
+
+  .dark .glitter-hero .glitter-hero-cta {
+    border-color: var(--glitter-border);
+    background: transparent;
+    color: var(--glitter-text);
+  }
+
+  .dark .glitter-hero .glitter-hero-cta:hover,
+  .dark .glitter-hero .glitter-hero-cta:active {
+    border-color: var(--glitter-primary);
+    background: var(--glitter-primary);
+    color: #0b1120;
+  }
+
+  .dark .glitter-hero .glitter-hero-cta:focus-visible {
+    border-color: var(--glitter-focus);
+    background: transparent;
+    color: var(--glitter-text);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .glitter-hero .glitter-hero-cta {
+      transition-duration: 0.01ms;
+    }
+  }
+
+  .glitter-extension-showcase,
+  .glitter-project-showcase,
+  .glitter-journal-showcase {
+    position: relative;
+  }
+
+  .glitter-extension-showcase > div:first-child,
+  .glitter-project-showcase > div:first-child,
+  .glitter-journal-showcase > div:first-child {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+
+  .glitter-extension-showcase > div:nth-child(2) {
+    gap: 1rem !important;
+  }
+
+  .glitter-extension-showcase > div:nth-child(2) > div,
+  .glitter-project-showcase > div:nth-child(2) > div {
+    position: relative;
+    overflow: hidden;
+    background: var(--glitter-surface) !important;
+    border-color: var(--glitter-border) !important;
+    box-shadow: var(--glitter-shadow);
+  }
+
+  .glitter-extension-showcase > div:nth-child(2) > div {
+    min-height: 14rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .glitter-extension-showcase > div:nth-child(2) > div::before {
+    content: "";
+    display: block;
+    width: 2.25rem;
+    height: 0.25rem;
+    border-radius: 999px;
+    background: var(--glitter-extension);
+    margin-bottom: 1.4rem;
+  }
+
+  .glitter-project-showcase > div:nth-child(2) > div {
+    min-height: 15rem;
+    border-top: 3px solid var(--glitter-project) !important;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .glitter-project-showcase > div:nth-child(2) > div p:last-child {
+    margin-top: auto;
+  }
+
+  .glitter-journal-showcase > div:nth-child(2),
+  .glitter-about-panel {
+    background: var(--glitter-surface) !important;
+    border-color: var(--glitter-border) !important;
+    box-shadow: var(--glitter-shadow);
+  }
+
+  .glitter-journal-showcase [class*="grid"] > a,
+  .glitter-journal-showcase [class*="grid"] > div {
+    border-left: 2px solid var(--glitter-primary);
+    padding-left: 1rem;
+  }
+
+  .glitter-contact-panel {
+    background: rgba(13, 148, 136, 0.08) !important;
+    border: 1px solid rgba(13, 148, 136, 0.28) !important;
+  }
+
+  .dark .glitter-contact-panel {
+    background: rgba(45, 212, 191, 0.12) !important;
+    border-color: rgba(45, 212, 191, 0.34) !important;
+  }
+
+  .glitter-product-card {
+    border-color: var(--glitter-border) !important;
+    background: var(--glitter-surface) !important;
+    border-radius: 0.9rem !important;
+    box-shadow: var(--glitter-shadow);
+    transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  }
+
+  .glitter-product-card:hover {
+    border-color: var(--glitter-extension) !important;
+    box-shadow: var(--glitter-shadow-strong) !important;
+    transform: translateY(-2px);
+  }
+
+  .glitter-product-media {
+    background: var(--glitter-elevated) !important;
+  }
+
+  .glitter-product-card:nth-child(3n + 1) .glitter-product-media {
+    background: #ede9fe !important;
+  }
+
+  .glitter-product-card:nth-child(3n + 2) .glitter-product-media {
+    background: #e0f2fe !important;
+  }
+
+  .glitter-product-card:nth-child(3n) .glitter-product-media {
+    background: #ccfbf1 !important;
+  }
+
+  .dark .glitter-product-card:nth-child(3n + 1) .glitter-product-media {
+    background: #2e2454 !important;
+  }
+
+  .dark .glitter-product-card:nth-child(3n + 2) .glitter-product-media {
+    background: #18364d !important;
+  }
+
+  .dark .glitter-product-card:nth-child(3n) .glitter-product-media {
+    background: #143d3d !important;
+  }
+
+  .glitter-product-card [class*="bg-blue-50"] {
+    background: rgba(124, 58, 237, 0.1) !important;
+    color: var(--glitter-extension) !important;
+  }
+
+  .glitter-product-card [class*="text-indigo-700"],
+  .glitter-product-card [class*="text-indigo-300"] {
+    color: var(--glitter-extension) !important;
+  }
+
+  .glitter-product-media [class*="bg-black"] {
+    background: rgba(11, 17, 32, 0.78) !important;
+  }
+
+  .glitter-product-media [class*="text-blue-300"] {
+    color: var(--glitter-upcoming) !important;
+  }
+
+  .glitter-product-showcase {
+    padding: 1.25rem;
+    border: 1px solid var(--glitter-border);
+    border-radius: 1.25rem;
+    background: var(--glitter-elevated);
+  }
+
+  .glitter-product-slot {
+    min-height: 22rem;
+  }
+
+  .glitter-recent-posts-card {
+    min-height: 18rem;
+  }
+
+  .glitter-product-showcase button {
+    border-color: var(--glitter-border);
+    background: var(--glitter-surface);
+    color: var(--glitter-muted);
+    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, opacity 160ms ease;
+  }
+
+  .glitter-product-showcase button:not(:disabled):hover {
+    border-color: var(--glitter-primary);
+    background: var(--glitter-button-ghost-hover);
+    color: var(--glitter-primary);
+  }
+
+  .glitter-product-showcase button:focus-visible {
+    outline: 3px solid var(--glitter-focus) !important;
+    outline-offset: 2px;
+  }
+
+  .glitter-product-showcase button:disabled {
+    opacity: 0.55;
+  }
+
+  .glitter-product-showcase-upcoming {
+    background: var(--glitter-surface);
+  }
+
+  .glitter-product-showcase-title {
+    color: var(--glitter-text);
+    letter-spacing: -0.02em;
+  }
+
+  .glitter-product-showcase-grid {
+    scrollbar-width: thin;
+    scrollbar-color: var(--glitter-extension) transparent;
+  }
+
+  .glitter-product-showcase .glitter-product-card {
+    min-width: 0;
+  }
+
+  .glitter-popular-page .glitter-popular-list {
+    background: transparent !important;
+    box-shadow: none !important;
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .glitter-popular-item {
+    background: var(--glitter-surface) !important;
+    border-color: var(--glitter-border) !important;
+    border-left: 3px solid var(--glitter-primary) !important;
+    box-shadow: var(--glitter-shadow);
+  }
+
+  .glitter-popular-item:hover {
+    border-color: var(--glitter-primary) !important;
+    box-shadow: var(--glitter-shadow-strong);
+  }
+
+  .glitter-popular-item .glitter-rank {
+    border: 1px solid rgba(37, 99, 235, 0.28);
+    color: var(--glitter-primary);
+  }
+
+  .glitter-popular-item .bg-red-600 {
+    background: var(--glitter-primary) !important;
+  }
+
+  .glitter-journal-page [class*="grid-cols-\[60px"] {
+    grid-template-columns: minmax(0, 1fr) 170px 120px 70px !important;
+    background: var(--glitter-elevated) !important;
+    border-color: var(--glitter-border) !important;
+  }
+
+  .glitter-journal-page [class*="grid-cols-\[60px"] > :first-child {
+    display: none;
+  }
+
+  .glitter-journal-page [class*="grid-cols-\[60px"] + div {
+    border-color: var(--glitter-border) !important;
+  }
+
+  .glitter-journal-page [class*="grid-cols-\[60px"] .text-sm.font-medium {
+    font-size: 1rem;
+    line-height: 1.55;
+    color: var(--glitter-text) !important;
+  }
+
+  .glitter-journal-page [class*="prose"] a {
+    color: var(--glitter-primary);
+  }
+
+  .glitter-journal-page [class*="grid-cols-\[60px"] > :not(:first-child) {
+    border-color: var(--glitter-border);
+  }
+
+  .glitter-journal-page article,
+  .glitter-journal-page [class*="prose"] {
+    color: var(--glitter-text);
+  }
+
+  .glitter-journal-page [class*="bg-white"][class*="rounded"] {
+    background: var(--glitter-surface) !important;
+    border-color: var(--glitter-border) !important;
+    box-shadow: var(--glitter-shadow);
+  }
+
+  .glitter-footer {
+    background: var(--glitter-background) !important;
+    border-color: var(--glitter-border) !important;
+    color: var(--glitter-muted);
+  }
+
+  .dark .glitter-footer {
+    background: #0b1120 !important;
+    border-color: var(--glitter-border) !important;
+  }
+
+  .glitter-footer h3,
+  .glitter-footer h4 {
+    color: var(--glitter-text) !important;
+  }
+
+  .glitter-footer a,
+  .glitter-footer p {
+    color: var(--glitter-footer-muted) !important;
+  }
+
+  .glitter-footer a:hover {
+    color: var(--glitter-primary) !important;
+  }
+
+  .glitter-catalog-page input,
+  .glitter-catalog-page select,
+  .glitter-product-page input,
+  .glitter-product-page select {
+    border-color: var(--glitter-border) !important;
+    background: var(--glitter-surface) !important;
+    color: var(--glitter-text) !important;
+    transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+  }
+
+  .glitter-catalog-page input:focus,
+  .glitter-catalog-page select:focus,
+  .glitter-product-page input:focus,
+  .glitter-product-page select:focus {
+    border-color: var(--glitter-focus) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--glitter-focus) 20%, transparent);
+  }
+
+  .glitter-catalog-page [class*="bg-gray-50"],
+  .glitter-catalog-page [class*="bg-gray-800/50"] {
+    background: var(--glitter-elevated) !important;
+  }
+
+  .glitter-project-showcase > div:nth-child(2) > div {
+    transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  }
+
+  .glitter-project-showcase > div:nth-child(2) > div:hover {
+    border-color: var(--glitter-project) !important;
+    box-shadow: var(--glitter-shadow-strong);
+    transform: translateY(-2px);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .glitter-product-card,
+    .glitter-product-showcase button,
+    .glitter-project-showcase > div:nth-child(2) > div,
+    .glitter-catalog-page input,
+    .glitter-catalog-page select,
+    .glitter-product-page input,
+    .glitter-product-page select {
+      transition-duration: 0.01ms;
+    }
+
+    .glitter-product-card:hover,
+    .glitter-project-showcase > div:nth-child(2) > div:hover {
+      transform: none;
+    }
+  }
+
+  .glitter-header-root {
+    isolation: isolate;
+  }
+
+  .glitter-header-top {
+    min-width: 0;
+    min-height: 4.5rem;
+    gap: 0.75rem;
+  }
+
+  .glitter-header-brand {
+    flex: 0 1 13rem;
+    color: var(--glitter-text);
+  }
+
+  .glitter-header-inline-nav {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .glitter-header-inline-nav .glitter-primary-nav {
+    min-width: max-content;
+    min-height: 4.5rem;
+    scrollbar-width: none;
+  }
+
+  .glitter-header-inline-nav .glitter-primary-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .glitter-header-utilities {
+    flex: 0 1 auto;
+    min-width: max-content;
+  }
+
+  .glitter-auth-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    white-space: nowrap;
+    min-height: 2.75rem;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .glitter-auth-link {
+    border: 1px solid transparent;
+    border-radius: 0.625rem;
+    background: transparent;
+    color: var(--glitter-text) !important;
+    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+  }
+
+  .glitter-auth-link:hover {
+    border-color: transparent;
+    background: var(--glitter-button-ghost-hover);
+    color: var(--glitter-primary) !important;
+  }
+
+  .glitter-auth-link:focus-visible {
+    border-color: var(--glitter-focus);
+    background: transparent;
+    color: var(--glitter-text) !important;
+  }
+
+  .glitter-auth-register {
+    border: 1px solid var(--glitter-button-primary);
+    background: var(--glitter-button-primary) !important;
+    color: #ffffff !important;
+    box-shadow: 0 5px 12px rgba(37, 99, 235, 0.2);
+    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+  }
+
+  .glitter-auth-register:hover {
+    border-color: var(--glitter-button-primary-hover);
+    background: var(--glitter-button-primary-hover) !important;
+    color: #ffffff !important;
+  }
+
+  .glitter-auth-register:focus-visible {
+    border-color: var(--glitter-focus);
+    color: #ffffff !important;
+  }
+
+  .dark .glitter-auth-link:hover {
+    border-color: transparent;
+    background: var(--glitter-button-ghost-hover);
+    color: var(--glitter-primary) !important;
+  }
+
+  .dark .glitter-auth-link:focus-visible {
+    background: transparent;
+    color: var(--glitter-text) !important;
+  }
+
+  .dark .glitter-auth-register {
+    color: var(--glitter-button-primary-text) !important;
+  }
+
+  .dark .glitter-auth-register:hover {
+    border-color: var(--glitter-button-primary-hover);
+    background: var(--glitter-button-primary-hover) !important;
+    color: var(--glitter-button-primary-text) !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .glitter-auth-link,
+    .glitter-auth-register {
+      transition-duration: 0.01ms;
+    }
+  }
+
+  .glitter-account-trigger {
+    min-height: 2.75rem;
+    border: 1px solid transparent;
+    border-radius: 0.75rem;
+  }
+
+  .glitter-account-trigger:hover,
+  .glitter-account-trigger[aria-expanded="true"] {
+    border-color: var(--glitter-border);
+    background: var(--glitter-elevated);
+  }
+
+  .glitter-account-dropdown {
+    border-color: var(--glitter-border) !important;
+    background: var(--glitter-surface) !important;
+    box-shadow: var(--glitter-shadow-strong) !important;
+  }
+
+  .glitter-nav-link {
+    position: relative;
+    color: var(--glitter-muted);
+  }
+
+  .glitter-nav-link:hover {
+    color: var(--glitter-text) !important;
+  }
+
+  .glitter-nav-link-active {
+    background: rgba(37, 99, 235, 0.08) !important;
+    color: var(--glitter-primary) !important;
+  }
+
+  .glitter-nav-link-active::after {
+    content: "";
+    position: absolute;
+    right: 0.75rem;
+    bottom: 0.25rem;
+    left: 0.75rem;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--glitter-primary);
+  }
+
+  .dark .glitter-nav-link-active {
+    background: rgba(96, 165, 250, 0.12) !important;
+    color: var(--glitter-primary) !important;
+  }
+
+  .glitter-mobile-menu-button {
+    border-radius: 0.75rem;
+  }
+
+  .glitter-mobile-menu-button:hover {
+    background: var(--glitter-elevated);
+    color: var(--glitter-text) !important;
+  }
+
+  @media (max-width: 639px) {
+    .glitter-extension-showcase > div:first-child,
+    .glitter-project-showcase > div:first-child,
+    .glitter-journal-showcase > div:first-child {
+      align-items: start;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .glitter-product-showcase {
+      padding: 1rem;
+    }
+
+    .glitter-product-slot {
+      min-height: 20rem;
+    }
+
+    .glitter-header-brand {
+      flex-basis: auto;
+      max-width: 9rem;
+    }
+
+    .glitter-header-utilities {
+      gap: 0.15rem;
+    }
+
+    .glitter-auth-actions {
+      gap: 0.25rem;
+    }
+
+    .glitter-auth-actions .glitter-auth-login {
+      padding-inline: 0.5rem;
+    }
+
+    .glitter-auth-actions .glitter-auth-register {
+      padding-inline: 0.65rem;
+    }
+  }
+}

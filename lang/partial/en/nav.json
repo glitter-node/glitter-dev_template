@@ -1,0 +1,16 @@
+{
+  "home": "Home",
+  "popular": "Popular Posts",
+  "boards": "Boards",
+  "shop": "Extensions",
+  "cart": "Cart",
+  "mypage": "My Page",
+  "login": "Login",
+  "register": "Sign Up",
+  "logout": "Logout",
+  "more": "More",
+  "loading": "Loading...",
+  "cart_with_count": "Cart ({{count}} items)",
+  "cart_with_count_one": "Cart ({{count}} item)",
+  "close_menu": "Close menu"
+}

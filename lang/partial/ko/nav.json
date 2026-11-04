@@ -1,0 +1,15 @@
+{
+  "home": "홈",
+  "popular": "인기글",
+  "boards": "게시판",
+  "shop": "확장 제품",
+  "cart": "장바구니",
+  "mypage": "마이페이지",
+  "login": "로그인",
+  "register": "회원가입",
+  "logout": "로그아웃",
+  "more": "더보기",
+  "loading": "로딩 중...",
+  "cart_with_count": "장바구니 (담긴 상품 {{count}}개)",
+  "close_menu": "메뉴 닫기"
+}

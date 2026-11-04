@@ -1,0 +1,1859 @@
+{
+    "version": "1.0.0",
+    "layout_name": "home",
+    "extends": "_user_base",
+    "meta": {
+        "seo": {
+            "enabled": true,
+            "priority": 1,
+            "changefreq": "daily",
+            "data_sources": [
+                "recent_posts",
+                "popularProducts",
+                "newProducts"
+            ],
+            "og": {
+                "type": "website"
+            },
+            "structured_data": {
+                "@type": "WebSite",
+                "name": "{{_global.site_name ?? ''}}",
+                "url": "{{_global.site_url ?? ''}}"
+            }
+        }
+    },
+    "data_sources": [
+        {
+            "id": "recent_posts",
+            "label_key": "$t:editor.data_source.recent_posts",
+            "type": "api",
+            "endpoint": "/api/modules/sirsoft-board/boards/posts/recent?limit=5",
+            "method": "GET",
+            "auto_fetch": true,
+            "auth_mode": "optional",
+            "loading_strategy": "background",
+            "if": "{{_global.activeModules?.includes('sirsoft-board') ?? true}}",
+            "fallback": {
+                "data": []
+            },
+            "errorHandling": {
+                "404": {
+                    "handler": "suppress"
+                }
+            }
+        },
+        {
+            "id": "popularProducts",
+            "label_key": "$t:editor.data_source.popularProducts",
+            "type": "api",
+            "endpoint": "/api/modules/sirsoft-ecommerce/products/popular?limit=8",
+            "method": "GET",
+            "auth_mode": "optional",
+            "auto_fetch": true,
+            "loading_strategy": "background",
+            "if": "{{_global.activeModules?.includes('sirsoft-ecommerce') ?? true}}",
+            "fallback": {
+                "data": []
+            },
+            "errorHandling": {
+                "401": {
+                    "handler": "suppress"
+                },
+                "403": {
+                    "handler": "suppress"
+                },
+                "404": {
+                    "handler": "suppress"
+                }
+            }
+        },
+        {
+            "id": "newProducts",
+            "label_key": "$t:editor.data_source.newProducts",
+            "type": "api",
+            "endpoint": "/api/modules/sirsoft-ecommerce/products/new?limit=8",
+            "method": "GET",
+            "auth_mode": "optional",
+            "auto_fetch": true,
+            "loading_strategy": "background",
+            "if": "{{_global.activeModules?.includes('sirsoft-ecommerce') ?? true}}",
+            "fallback": {
+                "data": []
+            },
+            "errorHandling": {
+                "401": {
+                    "handler": "suppress"
+                },
+                "403": {
+                    "handler": "suppress"
+                },
+                "404": {
+                    "handler": "suppress"
+                }
+            }
+        }
+    ],
+    "permissions": [],
+    "slots": {
+        "content": [
+            {
+                "type": "layout",
+                "name": "Container",
+                "responsive": {
+                    "tablet": {
+                        "props": {
+                            "className": "py-6 px-6"
+                        }
+                    },
+                    "desktop": {
+                        "props": {
+                            "className": "py-6 px-8"
+                        }
+                    }
+                },
+                "props": {
+                    "className": "glitter-home-page py-6 px-4"
+                },
+                "children": [
+                    {
+                        "type": "basic",
+                        "name": "Div",
+                        "props": {
+                            "aria-labelledby": "developer-hero-title",
+                            "className": "glitter-hero rounded-2xl bg-gray-900 dark:bg-gray-800 px-6 py-8 sm:px-10 sm:py-10 mb-12"
+                        },
+                        "children": [
+                            {
+                                "type": "basic",
+                                "name": "Div",
+                                "props": {
+                                    "className": "max-w-3xl"
+                                },
+                                "children": [
+                                    {
+                                        "type": "basic",
+                                        "name": "P",
+                                        "props": {
+                                            "className": "text-sm font-semibold uppercase tracking-wide text-indigo-300"
+                                        },
+                                        "text": "$t:home.developer_badge"
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "H1",
+                                        "props": {
+                                            "id": "developer-hero-title",
+                                            "className": "mt-3 text-3xl font-bold tracking-tight text-white sm:text-5xl"
+                                        },
+                                        "text": "$t:home.developer_title"
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "P",
+                                        "props": {
+                                            "className": "mt-4 text-base font-medium text-indigo-200 sm:text-lg"
+                                        },
+                                        "text": "$t:home.developer_focus"
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "P",
+                                        "props": {
+                                            "className": "mt-5 text-base leading-7 text-gray-300 sm:text-lg"
+                                        },
+                                        "text": "$t:home.developer_intro"
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": {
+                                            "className": "mt-8 flex flex-wrap gap-3"
+                                        },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "A",
+                                                "props": {
+                                                    "href": "#featured-projects-title",
+                                                    "className": "glitter-hero-cta inline-flex items-center rounded-lg px-4 py-2.5 text-sm font-semibold"
+                                                },
+                                                "text": "$t:home.explore_projects"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "A",
+                                                "if": "{{_global.activeModules?.includes('sirsoft-ecommerce') ?? true}}",
+                                                "props": {
+                                                    "href": "{{_global.shopBase ?? '/shop'}}/products",
+                                                    "className": "glitter-hero-cta inline-flex items-center rounded-lg px-4 py-2.5 text-sm font-semibold"
+                                                },
+                                                "text": "$t:home.browse_extensions"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "A",
+                                                "props": {
+                                                    "href": "https://github.com/glitter-gim",
+                                                    "target": "_blank",
+                                                    "rel": "noopener noreferrer",
+                                                    "className": "glitter-hero-cta inline-flex items-center rounded-lg px-4 py-2.5 text-sm font-semibold"
+                                                },
+                                                "text": "$t:home.github_profile"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "A",
+                                                "props": {
+                                                    "href": "https://sir.kr/portfolios?member=985c569d-f158-48b5-a0f2-7f59b4c11229",
+                                                    "target": "_blank",
+                                                    "rel": "noopener noreferrer",
+                                                    "className": "glitter-hero-cta inline-flex items-center rounded-lg px-4 py-2.5 text-sm font-semibold"
+                                                },
+                                                "text": "$t:home.sir_portfolio"
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "basic",
+                        "name": "Div",
+                        "props": {
+                            "aria-labelledby": "featured-extensions-title",
+                            "className": "glitter-extension-showcase mb-12"
+                        },
+                        "children": [
+                            {
+                                "type": "basic",
+                                "name": "Div",
+                                "props": {
+                                    "className": "mb-6 max-w-3xl"
+                                },
+                                "children": [
+                                    {
+                                        "type": "basic",
+                                        "name": "H2",
+                                        "props": {
+                                            "id": "featured-extensions-title",
+                                            "className": "text-2xl font-bold text-gray-900 dark:text-white whitespace-nowrap shrink-0 w-max"
+                                        },
+                                        "text": "$t:home.featured_extensions"
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "P",
+                                        "props": {
+                                            "className": "mt-2 text-gray-600 dark:text-gray-300"
+                                        },
+                                        "text": "$t:home.featured_extensions_description"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "basic",
+                                "name": "Div",
+                                "props": {
+                                    "className": "grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+                                },
+                                "children": [
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": {
+                                            "className": "rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+                                        },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "flex items-center justify-between gap-3"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "H3",
+                                                        "props": {
+                                                            "className": "text-lg font-semibold text-gray-900 dark:text-white"
+                                                        },
+                                                        "text": "$t:home.extension_board_name"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "text-xs font-medium text-gray-500 dark:text-gray-400"
+                                                        },
+                                                        "text": "$t:home.extension_type_module"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "P",
+                                                "props": {
+                                                    "className": "mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300"
+                                                },
+                                                "text": "$t:home.extension_board_description"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "mt-4 space-y-1 text-xs text-gray-500 dark:text-gray-400"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.catalog_version"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": ":"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.extension_board_version"
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.catalog_license"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": ":"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.extension_board_license"
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.catalog_g7_version"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": ":"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.extension_board_g7_version"
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "A",
+                                                "props": {
+                                                    "href": "https://github.com/gnuboard/g7-module-sirsoft-board",
+                                                    "target": "_blank",
+                                                    "rel": "noopener noreferrer",
+                                                    "className": "mt-5 inline-flex text-sm font-semibold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+                                                },
+                                                "text": "$t:home.catalog_documentation"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": {
+                                            "className": "rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+                                        },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "flex items-center justify-between gap-3"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "H3",
+                                                        "props": {
+                                                            "className": "text-lg font-semibold text-gray-900 dark:text-white"
+                                                        },
+                                                        "text": "$t:home.extension_ecommerce_name"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "text-xs font-medium text-gray-500 dark:text-gray-400"
+                                                        },
+                                                        "text": "$t:home.extension_type_module"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "P",
+                                                "props": {
+                                                    "className": "mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300"
+                                                },
+                                                "text": "$t:home.extension_ecommerce_description"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "mt-4 space-y-1 text-xs text-gray-500 dark:text-gray-400"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.catalog_version"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": ":"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.extension_ecommerce_version"
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.catalog_license"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": ":"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.extension_ecommerce_license"
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.catalog_g7_version"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": ":"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.extension_ecommerce_g7_version"
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "A",
+                                                "props": {
+                                                    "href": "https://github.com/gnuboard/g7-module-sirsoft-ecommerce",
+                                                    "target": "_blank",
+                                                    "rel": "noopener noreferrer",
+                                                    "className": "mt-5 inline-flex text-sm font-semibold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+                                                },
+                                                "text": "$t:home.catalog_documentation"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": {
+                                            "className": "rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+                                        },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "flex items-center justify-between gap-3"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "H3",
+                                                        "props": {
+                                                            "className": "text-lg font-semibold text-gray-900 dark:text-white"
+                                                        },
+                                                        "text": "$t:home.extension_page_name"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "text-xs font-medium text-gray-500 dark:text-gray-400"
+                                                        },
+                                                        "text": "$t:home.extension_type_module"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "P",
+                                                "props": {
+                                                    "className": "mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300"
+                                                },
+                                                "text": "$t:home.extension_page_description"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "mt-4 space-y-1 text-xs text-gray-500 dark:text-gray-400"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.catalog_version"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": ":"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.extension_page_version"
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.catalog_license"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": ":"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.extension_page_license"
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.catalog_g7_version"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": ":"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.extension_page_g7_version"
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "A",
+                                                "props": {
+                                                    "href": "https://github.com/gnuboard/g7-module-sirsoft-page",
+                                                    "target": "_blank",
+                                                    "rel": "noopener noreferrer",
+                                                    "className": "mt-5 inline-flex text-sm font-semibold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+                                                },
+                                                "text": "$t:home.catalog_documentation"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": {
+                                            "className": "rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+                                        },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "flex items-center justify-between gap-3"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "H3",
+                                                        "props": {
+                                                            "className": "text-lg font-semibold text-gray-900 dark:text-white"
+                                                        },
+                                                        "text": "$t:home.extension_ckeditor_name"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "text-xs font-medium text-gray-500 dark:text-gray-400"
+                                                        },
+                                                        "text": "$t:home.extension_type_plugin"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "P",
+                                                "props": {
+                                                    "className": "mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300"
+                                                },
+                                                "text": "$t:home.extension_ckeditor_description"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "mt-4 space-y-1 text-xs text-gray-500 dark:text-gray-400"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.catalog_version"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": ":"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.extension_ckeditor_version"
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.catalog_license"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": ":"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.extension_ckeditor_license"
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.catalog_g7_version"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": ":"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.extension_ckeditor_g7_version"
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "A",
+                                                "props": {
+                                                    "href": "https://github.com/gnuboard/g7-plugin-sirsoft-ckeditor5",
+                                                    "target": "_blank",
+                                                    "rel": "noopener noreferrer",
+                                                    "className": "mt-5 inline-flex text-sm font-semibold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+                                                },
+                                                "text": "$t:home.catalog_documentation"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": {
+                                            "className": "rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+                                        },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "flex items-center justify-between gap-3"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "H3",
+                                                        "props": {
+                                                            "className": "text-lg font-semibold text-gray-900 dark:text-white"
+                                                        },
+                                                        "text": "$t:home.extension_postcode_name"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "text-xs font-medium text-gray-500 dark:text-gray-400"
+                                                        },
+                                                        "text": "$t:home.extension_type_plugin"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "P",
+                                                "props": {
+                                                    "className": "mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300"
+                                                },
+                                                "text": "$t:home.extension_postcode_description"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "mt-4 space-y-1 text-xs text-gray-500 dark:text-gray-400"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.catalog_version"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": ":"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.extension_postcode_version"
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.catalog_license"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": ":"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.extension_postcode_license"
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.catalog_g7_version"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": ":"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.extension_postcode_g7_version"
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "A",
+                                                "props": {
+                                                    "href": "https://github.com/gnuboard/g7-plugin-sirsoft-daum_postcode",
+                                                    "target": "_blank",
+                                                    "rel": "noopener noreferrer",
+                                                    "className": "mt-5 inline-flex text-sm font-semibold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+                                                },
+                                                "text": "$t:home.catalog_documentation"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": {
+                                            "className": "rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+                                        },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "flex items-center justify-between gap-3"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "H3",
+                                                        "props": {
+                                                            "className": "text-lg font-semibold text-gray-900 dark:text-white"
+                                                        },
+                                                        "text": "$t:home.extension_glitter_template_name"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "text-xs font-medium text-gray-500 dark:text-gray-400"
+                                                        },
+                                                        "text": "$t:home.extension_type_template"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "P",
+                                                "props": {
+                                                    "className": "mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300"
+                                                },
+                                                "text": "$t:home.extension_glitter_template_description"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "mt-4 space-y-1 text-xs text-gray-500 dark:text-gray-400"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.catalog_version"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": ":"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.extension_glitter_template_version"
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.catalog_license"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": ":"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.extension_glitter_template_license"
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.catalog_g7_version"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": ":"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.extension_glitter_template_g7_version"
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Span",
+                                                "props": {
+                                                    "className": "mt-5 inline-flex text-sm text-gray-500 dark:text-gray-400"
+                                                },
+                                                "text": "$t:home.catalog_no_public_docs"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": {
+                                            "className": "rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+                                        },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "flex items-center justify-between gap-3"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "H3",
+                                                        "props": {
+                                                            "className": "text-lg font-semibold text-gray-900 dark:text-white"
+                                                        },
+                                                        "text": "$t:home.extension_admin_template_name"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "text-xs font-medium text-gray-500 dark:text-gray-400"
+                                                        },
+                                                        "text": "$t:home.extension_type_template"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "P",
+                                                "props": {
+                                                    "className": "mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300"
+                                                },
+                                                "text": "$t:home.extension_admin_template_description"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "mt-4 space-y-1 text-xs text-gray-500 dark:text-gray-400"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.catalog_version"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": ":"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.extension_admin_template_version"
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.catalog_license"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": ":"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.extension_admin_template_license"
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.catalog_g7_version"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": ":"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:home.extension_admin_template_g7_version"
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "A",
+                                                "props": {
+                                                    "href": "https://github.com/gnuboard/g7-template-sirsoft-admin_basic",
+                                                    "target": "_blank",
+                                                    "rel": "noopener noreferrer",
+                                                    "className": "mt-5 inline-flex text-sm font-semibold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+                                                },
+                                                "text": "$t:home.catalog_documentation"
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "basic",
+                                "name": "Div",
+                                "if": "{{_global.activeModules?.includes('sirsoft-ecommerce') ?? true}}",
+                                "props": {
+                                    "className": "glitter-product-slot mt-10"
+                                },
+                                "children": [
+                                    {
+                                        "partial": "partials/shop/list/_popular_products.json"
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "if": "{{!(popularProducts.data?.length > 0)}}",
+                                        "props": {
+                                            "className": "rounded-xl border border-dashed border-gray-300 p-6 text-sm text-gray-600 dark:border-gray-600 dark:text-gray-300"
+                                        },
+                                        "text": "$t:home.extension_products_empty"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "basic",
+                        "name": "Div",
+                        "props": {
+                            "aria-labelledby": "featured-projects-title",
+                            "className": "glitter-project-showcase mb-12"
+                        },
+                        "children": [
+                            {
+                                "type": "basic",
+                                "name": "Div",
+                                "props": {
+                                    "className": "mb-6 max-w-3xl"
+                                },
+                                "children": [
+                                    {
+                                        "type": "basic",
+                                        "name": "H2",
+                                        "props": {
+                                            "id": "featured-projects-title",
+                                            "className": "text-2xl font-bold text-gray-900 dark:text-white whitespace-nowrap shrink-0 w-max"
+                                        },
+                                        "text": "$t:home.featured_projects"
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "P",
+                                        "props": {
+                                            "className": "mt-2 text-gray-600 dark:text-gray-300"
+                                        },
+                                        "text": "$t:home.featured_projects_description"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "basic",
+                                "name": "Div",
+                                "props": {
+                                    "className": "grid gap-4 sm:grid-cols-2"
+                                },
+                                "children": [
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": {
+                                            "className": "rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+                                        },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "flex items-center justify-between gap-3"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "H3",
+                                                        "props": {
+                                                            "className": "text-lg font-semibold text-gray-900 dark:text-white"
+                                                        },
+                                                        "text": "$t:home.project_extension_title"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300"
+                                                        },
+                                                        "text": "$t:home.demo_label"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "P",
+                                                "props": {
+                                                    "className": "mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300"
+                                                },
+                                                "text": "$t:home.project_extension_description"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "mt-4 flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "rounded-full bg-gray-100 px-2.5 py-1 dark:bg-gray-700"
+                                                        },
+                                                        "text": "$t:home.project_category_extension"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "rounded-full bg-gray-100 px-2.5 py-1 dark:bg-gray-700"
+                                                        },
+                                                        "text": "PHP"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "rounded-full bg-gray-100 px-2.5 py-1 dark:bg-gray-700"
+                                                        },
+                                                        "text": "Laravel"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "rounded-full bg-gray-100 px-2.5 py-1 dark:bg-gray-700"
+                                                        },
+                                                        "text": "Gnuboard7"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "P",
+                                                "props": {
+                                                    "className": "mt-5 text-xs text-gray-500 dark:text-gray-400"
+                                                },
+                                                "text": "$t:home.project_detail_pending"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": {
+                                            "className": "rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+                                        },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "flex items-center justify-between gap-3"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "H3",
+                                                        "props": {
+                                                            "className": "text-lg font-semibold text-gray-900 dark:text-white"
+                                                        },
+                                                        "text": "$t:home.project_security_title"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300"
+                                                        },
+                                                        "text": "$t:home.demo_label"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "P",
+                                                "props": {
+                                                    "className": "mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300"
+                                                },
+                                                "text": "$t:home.project_security_description"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "mt-4 flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "rounded-full bg-gray-100 px-2.5 py-1 dark:bg-gray-700"
+                                                        },
+                                                        "text": "$t:home.project_category_security"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "rounded-full bg-gray-100 px-2.5 py-1 dark:bg-gray-700"
+                                                        },
+                                                        "text": "PHP"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "rounded-full bg-gray-100 px-2.5 py-1 dark:bg-gray-700"
+                                                        },
+                                                        "text": "Laravel"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "rounded-full bg-gray-100 px-2.5 py-1 dark:bg-gray-700"
+                                                        },
+                                                        "text": "Web security"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "P",
+                                                "props": {
+                                                    "className": "mt-5 text-xs text-gray-500 dark:text-gray-400"
+                                                },
+                                                "text": "$t:home.project_detail_pending"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": {
+                                            "className": "rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+                                        },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "flex items-center justify-between gap-3"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "H3",
+                                                        "props": {
+                                                            "className": "text-lg font-semibold text-gray-900 dark:text-white"
+                                                        },
+                                                        "text": "$t:home.project_tools_title"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300"
+                                                        },
+                                                        "text": "$t:home.demo_label"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "P",
+                                                "props": {
+                                                    "className": "mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300"
+                                                },
+                                                "text": "$t:home.project_tools_description"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "mt-4 flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "rounded-full bg-gray-100 px-2.5 py-1 dark:bg-gray-700"
+                                                        },
+                                                        "text": "$t:home.project_category_tools"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "rounded-full bg-gray-100 px-2.5 py-1 dark:bg-gray-700"
+                                                        },
+                                                        "text": "React"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "rounded-full bg-gray-100 px-2.5 py-1 dark:bg-gray-700"
+                                                        },
+                                                        "text": "TypeScript"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "rounded-full bg-gray-100 px-2.5 py-1 dark:bg-gray-700"
+                                                        },
+                                                        "text": "Open source"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "P",
+                                                "props": {
+                                                    "className": "mt-5 text-xs text-gray-500 dark:text-gray-400"
+                                                },
+                                                "text": "$t:home.project_detail_pending"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": {
+                                            "className": "rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+                                        },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "flex items-center justify-between gap-3"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "H3",
+                                                        "props": {
+                                                            "className": "text-lg font-semibold text-gray-900 dark:text-white"
+                                                        },
+                                                        "text": "$t:home.project_infrastructure_title"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300"
+                                                        },
+                                                        "text": "$t:home.demo_label"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "P",
+                                                "props": {
+                                                    "className": "mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300"
+                                                },
+                                                "text": "$t:home.project_infrastructure_description"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "mt-4 flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "rounded-full bg-gray-100 px-2.5 py-1 dark:bg-gray-700"
+                                                        },
+                                                        "text": "$t:home.project_category_infrastructure"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "rounded-full bg-gray-100 px-2.5 py-1 dark:bg-gray-700"
+                                                        },
+                                                        "text": "Linux"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "rounded-full bg-gray-100 px-2.5 py-1 dark:bg-gray-700"
+                                                        },
+                                                        "text": "Nginx"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "props": {
+                                                            "className": "rounded-full bg-gray-100 px-2.5 py-1 dark:bg-gray-700"
+                                                        },
+                                                        "text": "PHP-FPM"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "P",
+                                                "props": {
+                                                    "className": "mt-5 text-xs text-gray-500 dark:text-gray-400"
+                                                },
+                                                "text": "$t:home.project_detail_pending"
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "basic",
+                        "name": "Div",
+                        "if": "{{_global.activeModules?.includes('sirsoft-board') ?? true}}",
+                        "props": {
+                            "aria-labelledby": "tech-journal-title",
+                            "className": "glitter-journal-showcase mb-12"
+                        },
+                        "children": [
+                            {
+                                "type": "basic",
+                                "name": "Div",
+                                "props": {
+                                    "className": "mb-6 max-w-3xl"
+                                },
+                                "children": [
+                                    {
+                                        "type": "basic",
+                                        "name": "H2",
+                                        "props": {
+                                            "id": "tech-journal-title",
+                                            "className": "text-2xl font-bold text-gray-900 dark:text-white whitespace-nowrap shrink-0 w-max"
+                                        },
+                                        "text": "$t:home.tech_journal"
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "P",
+                                        "props": {
+                                            "className": "mt-2 text-gray-600 dark:text-gray-300"
+                                        },
+                                        "text": "$t:home.tech_journal_description"
+                                    }
+                                ]
+                            },
+                            {
+                                "partial": "partials/home/_recent_posts.json"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "basic",
+                        "name": "Div",
+                        "if": "{{_global.activeModules?.includes('sirsoft-page') ?? true}}",
+                        "props": {
+                            "aria-labelledby": "about-developer-title",
+                            "className": "glitter-about-panel mb-12 rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800 sm:p-8"
+                        },
+                        "children": [
+                            {
+                                "type": "basic",
+                                "name": "H2",
+                                "props": {
+                                    "id": "about-developer-title",
+                                    "className": "text-2xl font-bold text-gray-900 dark:text-white"
+                                },
+                                "text": "$t:home.about_developer"
+                            },
+                            {
+                                "type": "basic",
+                                "name": "P",
+                                "props": {
+                                    "className": "mt-3 max-w-3xl leading-7 text-gray-600 dark:text-gray-300"
+                                },
+                                "text": "$t:home.about_developer_intro"
+                            },
+                            {
+                                "type": "basic",
+                                "name": "Div",
+                                "props": {
+                                    "className": "mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5"
+                                },
+                                "children": [
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": {
+                                            "className": "rounded-lg bg-gray-50 p-4 dark:bg-gray-700"
+                                        },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "H3",
+                                                "props": {
+                                                    "className": "font-semibold text-gray-900 dark:text-white"
+                                                },
+                                                "text": "$t:home.skill_php_laravel"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "P",
+                                                "props": {
+                                                    "className": "mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300"
+                                                },
+                                                "text": "$t:home.skill_php_laravel_description"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": {
+                                            "className": "rounded-lg bg-gray-50 p-4 dark:bg-gray-700"
+                                        },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "H3",
+                                                "props": {
+                                                    "className": "font-semibold text-gray-900 dark:text-white"
+                                                },
+                                                "text": "$t:home.skill_react_typescript"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "P",
+                                                "props": {
+                                                    "className": "mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300"
+                                                },
+                                                "text": "$t:home.skill_react_typescript_description"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": {
+                                            "className": "rounded-lg bg-gray-50 p-4 dark:bg-gray-700"
+                                        },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "H3",
+                                                "props": {
+                                                    "className": "font-semibold text-gray-900 dark:text-white"
+                                                },
+                                                "text": "$t:home.skill_linux_nginx"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "P",
+                                                "props": {
+                                                    "className": "mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300"
+                                                },
+                                                "text": "$t:home.skill_linux_nginx_description"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": {
+                                            "className": "rounded-lg bg-gray-50 p-4 dark:bg-gray-700"
+                                        },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "H3",
+                                                "props": {
+                                                    "className": "font-semibold text-gray-900 dark:text-white"
+                                                },
+                                                "text": "$t:home.skill_mariadb"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "P",
+                                                "props": {
+                                                    "className": "mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300"
+                                                },
+                                                "text": "$t:home.skill_mariadb_description"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": {
+                                            "className": "rounded-lg bg-gray-50 p-4 dark:bg-gray-700"
+                                        },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "H3",
+                                                "props": {
+                                                    "className": "font-semibold text-gray-900 dark:text-white"
+                                                },
+                                                "text": "$t:home.skill_open_source"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "P",
+                                                "props": {
+                                                    "className": "mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300"
+                                                },
+                                                "text": "$t:home.skill_open_source_description"
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "basic",
+                                "name": "A",
+                                "props": {
+                                    "href": "/page/about",
+                                    "className": "mt-6 inline-flex items-center text-sm font-semibold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+                                },
+                                "text": "$t:home.view_profile"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "basic",
+                        "name": "Div",
+                        "props": {
+                            "aria-labelledby": "contact-explore-title",
+                            "className": "glitter-contact-panel rounded-2xl bg-gray-100 p-6 dark:bg-gray-800 sm:p-8"
+                        },
+                        "children": [
+                            {
+                                "type": "basic",
+                                "name": "H2",
+                                "props": {
+                                    "id": "contact-explore-title",
+                                    "className": "text-2xl font-bold text-gray-900 dark:text-white"
+                                },
+                                "text": "$t:home.contact_explore"
+                            },
+                            {
+                                "type": "basic",
+                                "name": "P",
+                                "props": {
+                                    "className": "mt-3 max-w-3xl leading-7 text-gray-600 dark:text-gray-300"
+                                },
+                                "text": "$t:home.contact_explore_description"
+                            },
+                            {
+                                "type": "basic",
+                                "name": "Div",
+                                "props": {
+                                    "className": "mt-6 flex flex-wrap gap-x-6 gap-y-3 text-sm font-semibold"
+                                },
+                                "children": [
+                                    {
+                                        "type": "basic",
+                                        "name": "A",
+                                        "if": "{{_global.activeModules?.includes('sirsoft-page') ?? true}}",
+                                        "props": {
+                                            "href": "/page/contact",
+                                            "className": "text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+                                        },
+                                        "text": "$t:home.contact"
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "A",
+                                        "if": "{{_global.activeModules?.includes('sirsoft-page') ?? true}}",
+                                        "props": {
+                                            "href": "/page/faq",
+                                            "className": "text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+                                        },
+                                        "text": "$t:home.faq"
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "A",
+                                        "if": "{{_global.activeModules?.includes('sirsoft-board') ?? true}}",
+                                        "props": {
+                                            "href": "/boards",
+                                            "className": "text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+                                        },
+                                        "text": "$t:home.browse_community"
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "A",
+                                        "if": "{{_global.activeModules?.includes('sirsoft-ecommerce') ?? true}}",
+                                        "props": {
+                                            "href": "{{_global.shopBase ?? '/shop'}}/products",
+                                            "className": "text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+                                        },
+                                        "text": "$t:home.browse_extensions"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+}

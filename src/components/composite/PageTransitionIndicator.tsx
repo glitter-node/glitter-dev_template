@@ -1,0 +1,75 @@
+import React, { useState, useEffect } from 'react';
+import { Div } from '../basic/Div';
+
+// G7Core.t() 번역 함수 참조
+const t = (key: string, params?: Record<string, string | number>) =>
+  (window as any).G7Core?.t?.(key, params) ?? key;
+
+// Logger 설정 (G7Core 초기화 전에도 동작하도록 폴백 포함)
+const logger = ((window as any).G7Core?.createLogger?.('Comp:PageTransition')) ?? {
+    log: (...args: unknown[]) => console.log('[Comp:PageTransition]', ...args),
+    warn: (...args: unknown[]) => console.warn('[Comp:PageTransition]', ...args),
+    error: (...args: unknown[]) => console.error('[Comp:PageTransition]', ...args),
+};
+
+export interface PageTransitionIndicatorProps {
+  className?: string;
+}
+
+/**
+ * PageTransitionIndicator 컴포넌트
+ *
+ * TransitionManager의 isPending 상태를 구독하여 페이지 전환 시
+ * 상단에 로딩 바를 표시합니다.
+ *
+ * @example
+ * // 레이아웃 JSON 사용 예시
+ * {
+ *   "name": "PageTransitionIndicator"
+ * }
+ */
+export const PageTransitionIndicator: React.FC<PageTransitionIndicatorProps> = ({
+  className = '',
+}) => {
+  const [isPending, setIsPending] = useState(false);
+
+  useEffect(() => {
+    // G7Core.TransitionManager 접근
+    const transitionManager = (window as any).G7Core?.TransitionManager;
+
+    if (!transitionManager) {
+      logger.warn('TransitionManager를 찾을 수 없습니다.');
+      return;
+    }
+
+    // 구독 및 초기 상태 설정
+    setIsPending(transitionManager.getIsPending());
+
+    const unsubscribe = transitionManager.subscribe((newIsPending: boolean) => {
+      setIsPending(newIsPending);
+    });
+
+    // 정리 함수
+    return unsubscribe;
+  }, []);
+
+  if (!isPending) {
+    return null;
+  }
+
+  return (
+    <Div
+      className={`fixed top-0 left-0 right-0 z-50 ${className}`}
+      role="progressbar"
+      aria-label={t('common.page_loading')}
+    >
+      <Div className="h-1 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-500 animate-pulse">
+        <Div
+          className="g7-page-transition-indicator h-full bg-blue-700 dark:bg-blue-400"
+        />
+      </Div>
+    </Div>
+  );
+};
+
+export default PageTransitionIndicator;

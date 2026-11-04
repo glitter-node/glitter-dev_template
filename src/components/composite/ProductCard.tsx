@@ -1,0 +1,418 @@
+/**
+ * ProductCard 컴포넌트
+ *
+ * 상품 목록에서 개별 상품을 표시하는 카드 컴포넌트입니다.
+ * 다중 통화를 지원하며, 할인율 뱃지를 표시합니다.
+ */
+
+import React, { useEffect, useState } from 'react';
+
+// @ts-ignore - DOMPurify 타입 정의 없음
+import DOMPurify from 'dompurify';
+
+// 기본 컴포넌트 import
+import { Div } from '../basic/Div';
+import { Button } from '../basic/Button';
+import { Span } from '../basic/Span';
+import { H3 } from '../basic/H3';
+import { Img } from '../basic/Img';
+import { Icon } from '../basic/Icon';
+import type { EditorAttrs } from '../../types';
+import { LinkButton } from '../../support/LinkButton';
+import { mergeQueryIntoHref, useLocationSearch } from '../../support/navigationLink';
+
+/**
+ * 선호 통화를 전역 상태에서 읽고, 변경을 구독하는 훅.
+ *
+ * 회귀 배경: 종전 `G7Core.state.get('preferredCurrency')` 는 key 를 무시하고
+ * _global 전체 객체를 반환해(G7CoreGlobals: get: () => getGlobalState()) 통화 코드가
+ * 아닌 객체가 들어가 multi_currency 조회가 항상 KRW 폴백되었고, 단발 get 이라 헤더에서
+ * 통화를 바꿔도 카드가 리렌더되지 않았다(상품 리스트/검색/캐러셀 KRW 고정 결함).
+ * → 전체 객체에서 `.preferredCurrency` 키로 접근 + state.subscribe 로 리렌더한다.
+ *
+ * 표시 통화 미설정 시에는 쇼핑몰 기본 통화로 폴백한다 — 특정 통화를 못 박으면
+ * 그 통화를 쓰지 않는 상점에서 multi_currency 조회가 늘 빗나가 기준통화 폴백이 된다.
+ *
+ * @returns 현재 선호 통화 코드 (없으면 기본 통화, 그것도 없으면 빈 문자열)
+ */
+const usePreferredCurrency = (): string => {
+  const read = (): string => {
+    const state = (window as any).G7Core?.state?.get?.();
+    return (state && (state.preferredCurrency || state.defaultCurrency)) || '';
+  };
+  const [currency, setCurrency] = useState<string>(read);
+
+  useEffect(() => {
+    const subscribe = (window as any).G7Core?.state?.subscribe;
+    // 구독 시점과 마운트 사이 변경분 보정
+    setCurrency(read());
+    if (typeof subscribe !== 'function') return;
+    const unsubscribe = subscribe((state: Record<string, any>) => {
+      setCurrency((state && (state.preferredCurrency || state.defaultCurrency)) || '');
+    });
+    return typeof unsubscribe === 'function' ? unsubscribe : undefined;
+  }, []);
+
+  return currency;
+};
+
+// G7Core.dispatch() navigate 헬퍼
+// preserveListQuery 면 목록 컨텍스트 왕복 규약(#75)에 따라 현재 URL 의 목록 상태를 승계한다.
+const navigate = (path: string, preserveListQuery = false) => {
+  (window as any).G7Core?.dispatch?.({
+    handler: 'navigate',
+    params: preserveListQuery ? { path, mergeQuery: true, query: {} } : { path },
+  });
+};
+
+interface CurrencyPrice {
+  value: number;
+  formatted: string;
+}
+
+interface ProductLabel {
+  name: string;
+  color: string;
+}
+
+interface ProductCardProps {
+  product: {
+    id: number;
+    /** 상품코드 — 상세 페이지 링크 식별자 (product_code 기준 라우팅). 없으면 id 로 폴백 */
+    product_code?: string;
+    name?: string | Record<string, string>;
+    name_localized?: string;
+    thumbnail_url: string;
+    primary_category?: string;
+    selling_price: number;
+    selling_price_formatted: string;
+    list_price?: number;
+    list_price_formatted?: string;
+    discount_rate?: number;
+    multi_currency_selling_price?: Record<string, CurrencyPrice>;
+    multi_currency_list_price?: Record<string, CurrencyPrice>;
+    /** 검색 하이라이트된 상품명 (HTML) */
+    name_highlighted?: string;
+    /** 검색 하이라이트된 설명 (HTML) */
+    description_highlighted?: string;
+    /** 짧은 설명 */
+    short_description?: string;
+    /** 판매 상태 (on_sale, sold_out, suspended, coming_soon) */
+    sales_status?: string;
+    /** 판매 상태 번역 라벨 */
+    sales_status_label?: string;
+    /** 브랜드명 */
+    brand_name?: string;
+    /** 상품 라벨/뱃지 목록 */
+    labels?: ProductLabel[];
+    /** 평균 별점 (0.0 ~ 5.0, 소수점 1자리) */
+    rating_avg?: number;
+    /** 전시중 리뷰 수 */
+    review_count?: number;
+  };
+  /** 클릭 시 호출되는 콜백 */
+  onClick?: (productId: number) => void;
+  /** 쇼핑몰 base 경로 (예: '/shop', '/store', '/') */
+  shopBase?: string;
+  /**
+   * 목록 컨텍스트 왕복 보존 여부 (#75).
+   *
+   * 상품 목록 그리드처럼 이 카드가 페이지네이션 목록의 일부인 자리에서만 true 로 켠다.
+   * 켜면 상세로 이동할 때 현재 URL 의 page/sort/keyword/category 를 상세 URL 로 승계해,
+   * 상세의 '뒤로가기' 가 보던 목록 위치로 정확히 되돌아간다.
+   *
+   * 찜 목록·검색 결과처럼 다른 목록에서 상품 상세로 나가는 이동은 기본값(false)을 유지한다 —
+   * 그 목록의 페이지 상태를 상품 목록으로 옮기면 엉뚱한 위치로 복귀한다.
+   */
+  preserveListQuery?: boolean;
+  /** 추가 CSS 클래스 */
+  className?: string;
+    /**
+   * DOM id 속성 (레이아웃 편집기 코어 일괄 ID)
+   */
+  id?: string;
+/**
+   * 레이아웃 편집기 주입 속성 (편집 모드 전용, 루트에 spread)
+   */
+  editorAttrs?: EditorAttrs;
+}
+
+/**
+ * 상품 카드 컴포넌트
+ *
+ * @example
+ * ```tsx
+ * <ProductCard
+ *   product={{
+ *     id: 1,
+ *     name: "프리미엄 울 코트",
+ *     thumbnail_url: "/images/product1.jpg",
+ *     primary_category: "의류",
+ *     selling_price: 189000,
+ *     selling_price_formatted: "189,000원",
+ *     list_price: 259000,
+ *     list_price_formatted: "259,000원",
+ *     discount_rate: 27,
+ *     multi_currency_selling_price: {
+ *       KRW: { value: 189000, formatted: "189,000원" },
+ *       USD: { value: 159, formatted: "$159.00" }
+ *     }
+ *   }}
+ * />
+ * ```
+ *
+ * @example
+ * ```json
+ * // 레이아웃 JSON에서 사용
+ * {
+ *   "type": "composite",
+ *   "name": "ProductCard",
+ *   "props": { "product": "{{product}}" }
+ * }
+ * ```
+ */
+/**
+ * rating_avg(0~5)를 0.5 단위로 반올림하여 별 아이콘 배열을 반환합니다.
+ * 반환값: 5개 원소, 각각 'full' | 'half' | 'empty'
+ */
+const getStarTypes = (avg: number): Array<'full' | 'half' | 'empty'> => {
+  const rounded = Math.round(avg * 2) / 2; // 0.5 단위 반올림
+  return [1, 2, 3, 4, 5].map((pos) => {
+    if (rounded >= pos) return 'full';
+    if (rounded >= pos - 0.5) return 'half';
+    return 'empty';
+  });
+};
+
+const productLabelClass = (color: string | undefined): string => {
+  switch (String(color ?? '').toLowerCase()) {
+    case '#ef4444': return 'g7-product-label-red';
+    case '#f97316': return 'g7-product-label-orange';
+    case '#eab308': return 'g7-product-label-yellow';
+    case '#22c55e': return 'g7-product-label-green';
+    case '#3b82f6': return 'g7-product-label-blue';
+    case '#a855f7': return 'g7-product-label-purple';
+    default: return 'g7-product-label-default';
+  }
+};
+
+const ProductCard: React.FC<ProductCardProps> = ({
+  product,
+  onClick,
+  shopBase = '/shop',
+  preserveListQuery = false,
+  className = '',
+  id,
+  editorAttrs,
+}) => {
+  // 쿼리만 바꾸는 같은 화면 이동 뒤에도 링크 href 가 새 쿼리를 합치도록 주소를 구독한다(props 가 같아 엔진이 다시 그리지 않는다)
+  useLocationSearch(preserveListQuery && !onClick);
+  const preferredCurrency = usePreferredCurrency();
+  const [imageFailed, setImageFailed] = React.useState(false);
+
+  /**
+   * 다중 통화 가격을 가져옵니다.
+   * 선호 통화가 없으면 기본 포맷 가격을 반환합니다.
+   */
+  const getPrice = (field: 'selling_price' | 'list_price'): string | undefined => {
+    const multiCurrencyField = `multi_currency_${field}` as keyof typeof product;
+    const multiCurrencyData = product[multiCurrencyField] as Record<string, CurrencyPrice> | undefined;
+
+    if (multiCurrencyData && multiCurrencyData[preferredCurrency]) {
+      return multiCurrencyData[preferredCurrency].formatted;
+    }
+
+    const formattedField = `${field}_formatted` as keyof typeof product;
+    return product[formattedField] as string | undefined;
+  };
+
+  const displayName = product.name_localized
+    ?? (typeof product.name === 'string' ? product.name : '')
+    ?? '';
+  const sellingPrice = getPrice('selling_price');
+  const listPrice = getPrice('list_price');
+  const hasDiscount = product.discount_rate && product.discount_rate > 0;
+  const isNotOnSale = product.sales_status && product.sales_status !== 'on_sale';
+  const isFree = Number(product.selling_price ?? 0) === 0;
+  const labels = product.labels ?? [];
+
+  /**
+   * HTML 하이라이트가 있으면 sanitize하여 반환합니다.
+   * mark 태그만 허용하여 XSS를 방지합니다.
+   */
+  const sanitizeHighlight = (html: string): string => {
+    return DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: ['mark'],
+      ALLOWED_ATTR: [],
+    }) as unknown as string;
+  };
+
+  const nameHighlighted = product.name_highlighted;
+  const descriptionHtml = product.description_highlighted ?? product.short_description;
+
+  const base = shopBase === '/' ? '' : shopBase;
+  // 상세 페이지는 product_code 기준 라우팅. code 미제공 시 id 로 폴백(하위호환).
+  const detailPath = `${base}/products/${product.product_code ?? product.id}`;
+
+  const handleClick = () => {
+    if (onClick) {
+      onClick(product.id);
+    } else {
+      navigate(detailPath, preserveListQuery);
+    }
+  };
+
+  const cardClassName = `glitter-product-card block w-full text-left group bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer ${className}`;
+
+  const content = (
+    <>
+      {/* 이미지 영역 */}
+      <Div className="glitter-product-media relative aspect-video overflow-hidden bg-gray-100 dark:bg-gray-700">
+        {/* 상품 이미지 */}
+        {product.thumbnail_url && !imageFailed ? (
+          <Img
+            src={product.thumbnail_url}
+            alt={displayName}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+            loading="lazy"
+            decoding="async"
+            onError={() => setImageFailed(true)}
+          />
+        ) : (
+          <Div className="w-full h-full flex items-center justify-center">
+            <Icon name="image" size="3x" className="text-gray-500 dark:text-gray-400" />
+          </Div>
+        )}
+
+        {/* 판매 상태 오버레이 */}
+        {isNotOnSale && (
+          <Div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+            <Span className={`text-lg font-bold ${
+              product.sales_status === 'sold_out' ? 'text-red-200' :
+              product.sales_status === 'suspended' ? 'text-amber-300' :
+              'text-blue-300'
+            } g7-text-shadow-overlay`}>
+              {product.sales_status_label ?? product.sales_status}
+            </Span>
+          </Div>
+        )}
+
+        {/* 할인율 뱃지 (좌상단) - 품절/판매중단 시 숨김 */}
+        {hasDiscount && product.sales_status !== 'sold_out' && product.sales_status !== 'suspended' && (
+          <Span className="absolute top-2 left-2 px-2 py-1 bg-red-600 dark:bg-red-600 text-white dark:text-white text-xs font-bold rounded">
+            {product.discount_rate}%
+          </Span>
+        )}
+
+        {/* 상품 라벨/뱃지 (우하단) */}
+        {labels.length > 0 && (
+          <Div className="absolute bottom-2 right-2 flex gap-1 flex-wrap justify-end">
+            {labels.map((label, idx) => {
+              return (
+                <Span
+                  key={idx}
+                  className={`text-xs font-medium px-1.5 py-0.5 rounded ${productLabelClass(label.color)}`}
+                >
+                  {label.name}
+                </Span>
+              );
+            })}
+          </Div>
+        )}
+      </Div>
+
+      {/* 상품 정보 */}
+      <Div className="p-4">
+        {/* 카테고리 및 브랜드 */}
+        <Div className="flex items-center gap-1.5 flex-wrap">
+          {product.primary_category && (
+            <Span className="inline-block text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded">
+              {product.primary_category}
+            </Span>
+          )}
+          {product.brand_name && (
+            <Span className="text-xs text-gray-500 dark:text-gray-400">
+              {product.brand_name}
+            </Span>
+          )}
+        </Div>
+
+        {/* 상품명 */}
+        {nameHighlighted ? (
+          <Div
+            className="mt-1 font-medium text-gray-900 dark:text-white line-clamp-1 [&_mark]:bg-yellow-200 [&_mark]:dark:bg-yellow-500/40 [&_mark]:px-0.5 [&_mark]:rounded"
+            dangerouslySetInnerHTML={{ __html: sanitizeHighlight(nameHighlighted) }}
+          />
+        ) : (
+          <H3 className="mt-1 font-medium text-gray-900 dark:text-white line-clamp-1">
+            {displayName}
+          </H3>
+        )}
+
+        {/* 상품 설명 (검색 결과 등에서 표시) */}
+        {descriptionHtml && (
+          <Div
+            className="mt-1 text-sm text-gray-600 dark:text-gray-400 line-clamp-2 [&_mark]:bg-yellow-200 [&_mark]:dark:bg-yellow-500/40 [&_mark]:px-0.5 [&_mark]:rounded"
+            dangerouslySetInnerHTML={{ __html: sanitizeHighlight(descriptionHtml) }}
+          />
+        )}
+
+        {/* 별점 영역 */}
+        {(product.sales_status !== 'coming_soon' && ((product.review_count ?? 0) > 0 || (product.rating_avg ?? 0) > 0)) && <Div className="mt-1.5 flex items-center gap-1">
+          {getStarTypes(product.rating_avg ?? 0).map((type, idx) => (
+            <Span
+              key={idx}
+              className={`text-xs ${type === 'empty' ? 'text-gray-500 dark:text-gray-500' : 'text-yellow-700 dark:text-yellow-400'}`}
+            >
+              {type === 'full' && <i className="fa-solid fa-star" />}
+              {type === 'half' && <i className="fa-solid fa-star-half-stroke" />}
+              {type === 'empty' && <i className="fa-regular fa-star" />}
+            </Span>
+          ))}
+          <Span className="text-xs text-gray-600 dark:text-gray-400 ml-0.5">
+            {(product.rating_avg ?? 0).toFixed(1)}
+          </Span>
+          <Span className="text-xs text-gray-500 dark:text-gray-400">
+            ({product.review_count ?? 0})
+          </Span>
+        </Div>}
+
+        {/* 가격 영역 */}
+        <Div className="mt-2 flex items-baseline gap-2">
+          <Span className={`font-bold ${isFree ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-900 dark:text-white'}`}>
+            {sellingPrice}
+          </Span>
+          {listPrice && hasDiscount && (
+            <Span className="text-sm text-gray-500 dark:text-gray-400 line-through">
+              {listPrice}
+            </Span>
+          )}
+        </Div>
+      </Div>
+    </>
+  );
+
+  // 상세로 가는 카드는 링크 — 가운데 클릭·Ctrl+클릭으로 새 탭에 연다(#757). 목록 문맥을 승계하면 href 에도 같은 쿼리를 싣는다.
+  // 레이아웃이 onClick 으로 따로 처리하는 카드는 주소를 알 수 없으므로 단추 그대로다.
+  if (onClick) {
+    return (
+      <Button onClick={handleClick} className={cardClassName} id={id} {...editorAttrs}>
+        {content}
+      </Button>
+    );
+  }
+
+  return (
+    <LinkButton
+      href={preserveListQuery ? mergeQueryIntoHref(detailPath) : detailPath}
+      onNavigate={handleClick}
+      className={cardClassName}
+      id={id}
+      {...(editorAttrs as Record<string, unknown>)}
+    >
+      {content}
+    </LinkButton>
+  );
+};
+
+export default ProductCard;

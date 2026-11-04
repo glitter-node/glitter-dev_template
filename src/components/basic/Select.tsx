@@ -1,0 +1,383 @@
+// e2e:allow커스텀 드롭다운 루트 props spread 타입 안전 캐스팅(admin 동기). 단위 회귀는 Select.test.tsx.
+import React, { useMemo, useState, useRef, useEffect, useCallback, useId } from 'react';
+import { Div } from './Div';
+import { Button } from './Button';
+import { Span } from './Span';
+import { Svg } from './Svg';
+import { Input } from './Input';
+import { getLocaleDisplayName } from '../../support/localeName';
+
+/** 검색칸 기본 안내 — 언어와 무관하게 「Search...」 였다(7.1.0 전수 실측, admin_basic 대칭) */
+const selectSearchPlaceholder = (): string => {
+  const translated = (window as any).G7Core?.t?.('common.search_placeholder');
+  return typeof translated === 'string' && translated !== 'common.search_placeholder' ? translated : 'Search...';
+};
+
+/** 검색칸 이름 — 안내 글자와 같은 결함으로 언어와 무관하게 「Search」 로 읽혔다(7.1.0 전수 실측) */
+const selectSearchLabel = (): string => {
+  const translated = (window as any).G7Core?.t?.('common.search');
+  return typeof translated === 'string' && translated !== 'common.search' ? translated : 'Search';
+};
+
+/** 검색 결과 없음 문구 — 언어와 무관하게 「No results」 였다(7.1.0 전수 실측) */
+const selectNoResults = (): string => {
+  const translated = (window as any).G7Core?.t?.('common.no_results');
+  return typeof translated === 'string' && translated !== 'common.no_results' ? translated : 'No results';
+};
+
+// Logger 설정 (G7Core 초기화 전에도 동작하도록 폴백 포함)
+const logger = ((window as any).G7Core?.createLogger?.('Comp:Select')) ?? {
+    log: (...args: unknown[]) => console.log('[Comp:Select]', ...args),
+    warn: (...args: unknown[]) => console.warn('[Comp:Select]', ...args),
+    error: (...args: unknown[]) => console.error('[Comp:Select]', ...args),
+};
+
+export interface SelectOption {
+  value: string | number;
+  label: string;
+  /** 드롭다운 목록에서 라벨 아래 작은 글자로 보이는 설명 (트리거 버튼에는 보이지 않는다) */
+  description?: string;
+  disabled?: boolean;
+}
+
+export interface SelectProps extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'onChange'> {
+  label?: string;
+  error?: string;
+  options?: SelectOption[] | string[];
+  onChange?: (e: React.ChangeEvent<HTMLSelectElement> | { target: { value: string | number } }) => void;
+  /** 드롭다운 내 검색 input 활성화 (engine-v1.40.0+) */
+  searchable?: boolean;
+  /** 검색 input placeholder */
+  searchPlaceholder?: string;
+  /**
+   * 레이아웃 편집기 주입 속성 (편집 모드 전용). Select 는 커스텀 드롭다운 루트에
+   * 개별 data-editor-* 키를 spread 해야 선택/편집이 닿는다(커스텀 루트
+   * passthrough). basic 컴포넌트라 `{...props}` 로 DOM 표준 속성(id 등)도 함께 흐른다.
+   */
+  editorAttrs?: Record<string, unknown>;
+}
+
+/**
+ * 로케일 코드를 사람이 읽을 수 있는 이름으로 변환
+ */
+function getLocaleName(locale: string): string {
+  // 언어팩 이름 → 번역 → 내장 표 → 코드 (#148 — 종전 state.get(경로) 는 인자를 무시해 언어팩 이름을 못 읽었다)
+  return getLocaleDisplayName(locale);
+}
+
+/**
+ * 커스텀 Select 컴포넌트
+ *
+ * options prop을 사용하여 드롭다운 메뉴를 생성합니다.
+ * 둥근 모서리, 그림자, 체크마크가 있는 커스텀 스타일을 지원합니다.
+ */
+export const Select: React.FC<SelectProps> = ({
+  children,
+  label,
+  error,
+  options,
+  className = '',
+  value,
+  onChange,
+  disabled,
+  searchable = false,
+  searchPlaceholder,
+  editorAttrs,
+  'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
+  ...props
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [dropdownPos, setDropdownPos] = useState<'up' | 'down' | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // 목록형 단추 이름 — 「{이름} {현재 값}」. 종전에는 aria-label·aria-labelledby 가 단추가 아니라 바깥 상자에
+  // 붙어 읽히지 않았고 고른 값만 단추 이름이 됐다(#757). 숨은 이름 span + 값 span 을 단추에 잇는다(관리자 템플릿과 같은 계약).
+  const domId = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  const nameId = `${domId}-name`;
+  const valueId = `${domId}-value`;
+
+  // options를 SelectOption[] 형식으로 정규화
+  const normalizedOptions = useMemo((): SelectOption[] | null => {
+    if (!options) return null;
+
+    // 배열이 아닌 경우 (바인딩 에러 또는 잘못된 prop)
+    if (!Array.isArray(options)) {
+      logger.warn('options prop is not an array:', options);
+      return null;
+    }
+
+    // 빈 배열인 경우
+    if (options.length === 0) return [];
+
+    // string[] 배열인 경우
+    if (typeof options[0] === 'string') {
+      return (options as string[]).map((locale): SelectOption => ({
+        value: locale,
+        label: getLocaleName(locale),
+      }));
+    }
+
+    // SelectOption[] 배열인 경우 (기존 동작)
+    return options as SelectOption[];
+  }, [options]);
+
+  // 현재 선택된 옵션의 라벨 가져오기
+  const selectedLabel = useMemo(() => {
+    if (!normalizedOptions) return '';
+    const selected = normalizedOptions.find(opt => String(opt.value) === String(value));
+    return selected?.label || '';
+  }, [normalizedOptions, value]);
+
+  // 고른 값이 없으면 값 자리를 잇지 않는다 — 이름만 읽힌다. 빈 값 자리표시 선택지(`{ value: '', label: '사이즈 선택' }`)도
+  // 고른 값이 아니다 — disabled 이거나 글자가 이름으로 시작하면 잇지 않는다(이으면 「사이즈 사이즈 선택」처럼 겹친다).
+  // 「전체 카테고리」처럼 뜻 있는 빈 값은 그대로 잇는다(관리자 템플릿 Select 와 같은 판정).
+  const selectedOption = normalizedOptions?.find((opt) => String(opt.value) === String(value));
+  const isPlaceholderOption =
+    !!selectedOption &&
+    String(selectedOption.value) === '' &&
+    (!!selectedOption.disabled ||
+      (!!ariaLabel && selectedOption.label.trim().startsWith(String(ariaLabel).trim())));
+  const valuePart = selectedLabel && !isPlaceholderOption ? ` ${valueId}` : '';
+  const buttonLabelledBy = ariaLabel
+    ? `${nameId}${valuePart}`
+    : ariaLabelledBy
+      ? `${ariaLabelledBy}${valuePart}`
+      : undefined;
+
+  // searchable 모드에서 검색어로 필터링된 옵션
+  const visibleOptions = useMemo((): SelectOption[] | null => {
+    if (!normalizedOptions) return null;
+    if (!searchable || searchTerm.trim() === '') return normalizedOptions;
+    const needle = searchTerm.trim().toLowerCase();
+    return normalizedOptions.filter(opt =>
+      opt.label.toLowerCase().includes(needle) ||
+      String(opt.value).toLowerCase().includes(needle)
+    );
+  }, [normalizedOptions, searchable, searchTerm]);
+
+  // 드롭다운 열릴 때 검색어 초기화 및 input 포커스
+  useEffect(() => {
+    if (isOpen && searchable) {
+      setSearchTerm('');
+      // 다음 tick에 포커스 (DOM 렌더 이후)
+      const timer = setTimeout(() => searchInputRef.current?.focus(), 0);
+      return () => clearTimeout(timer);
+    }
+    if (!isOpen) {
+      setSearchTerm('');
+    }
+  }, [isOpen, searchable]);
+
+  /**
+   * 드롭다운 열림 방향 계산
+   */
+  const updateDropdownPos = useCallback(() => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const dropdownMaxH = 280; // max-h-60(240px) + search(~40px)
+    const openUpward = spaceBelow < dropdownMaxH && rect.top > spaceBelow;
+    setDropdownPos(openUpward ? 'up' : 'down');
+  }, []);
+
+  // 드롭다운 열릴 때 위치 계산 + 스크롤/리사이즈 추적
+  useEffect(() => {
+    if (!isOpen) {
+      setDropdownPos(null);
+      return;
+    }
+    updateDropdownPos();
+    window.addEventListener('scroll', updateDropdownPos, true);
+    window.addEventListener('resize', updateDropdownPos);
+    return () => {
+      window.removeEventListener('scroll', updateDropdownPos, true);
+      window.removeEventListener('resize', updateDropdownPos);
+    };
+  }, [isOpen, updateDropdownPos]);
+
+  // 외부 클릭 시 드롭다운 닫기 (Portal 영역 포함)
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        containerRef.current && !containerRef.current.contains(target) &&
+        (!dropdownRef.current || !dropdownRef.current.contains(target))
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  // ESC 키로 드롭다운 닫기
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isOpen) {
+        setIsOpen(false);
+        buttonRef.current?.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
+  const handleToggle = () => {
+    if (!disabled) {
+      setIsOpen(!isOpen);
+    }
+  };
+
+  const handleSelect = (optionValue: string | number) => {
+    if (onChange) {
+      // ActionDispatcher가 이벤트를 인식할 수 있도록 preventDefault 메서드 포함
+      const syntheticEvent = {
+        target: { value: optionValue },
+        preventDefault: () => {},
+        stopPropagation: () => {},
+        type: 'change',
+      };
+      onChange(syntheticEvent as any);
+    }
+    setIsOpen(false);
+    buttonRef.current?.focus();
+  };
+
+  // options가 없으면 기본 select 사용 (children 지원)
+  if (!normalizedOptions) {
+    return (
+      <select
+        className={className}
+        value={value}
+        onChange={onChange as React.ChangeEventHandler<HTMLSelectElement>}
+        disabled={disabled}
+        aria-label={ariaLabel}
+        aria-labelledby={ariaLabelledBy}
+        {...editorAttrs}
+        {...props}
+      >
+        {children}
+      </select>
+    );
+  }
+
+  // 기본 스타일 (className이 없을 때 적용)
+  const hasCustomStyle = className && className.includes('bg-');
+  // 커스텀 스타일에 텍스트 색상이 없으면 기본 텍스트 색상 보충
+  const hasTextColor = className && /text-(gray|red|blue|green|yellow|white|black|indigo|purple|pink|orange|amber|emerald|teal|cyan|slate)-\d+|text-white|text-black/.test(className);
+  const baseButtonClass = hasCustomStyle
+    ? `${className}${hasTextColor ? '' : ' text-gray-700 dark:text-gray-200'}`
+    : `w-full px-4 py-2.5 bg-gray-100 dark:bg-gray-700 border-0 rounded-xl text-gray-700 dark:text-gray-200 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none ${className}`;
+
+  // props 는 SelectHTMLAttributes 기반이라 Div(HTMLDivElement) 에 직접 spread 시 타입 불일치.
+  // 런타임 동작(편집기 data-editor-* / id 등 DOM 표준 속성 passthrough)은 동일하므로
+  // DOM-safe 레코드로 캐스팅해 커스텀 드롭다운 루트에 전달한다.
+  const rootDomProps = { ...editorAttrs, ...props } as Record<string, unknown>;
+
+  return (
+    <Div ref={containerRef} className="relative" {...rootDomProps}>
+      {ariaLabel && (
+        <Span id={nameId} className="sr-only">
+          {ariaLabel}
+        </Span>
+      )}
+      <Button
+        ref={buttonRef}
+        type="button"
+        onClick={handleToggle}
+        disabled={disabled}
+        className={`${baseButtonClass} flex items-center justify-between gap-2 text-left cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed`}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-labelledby={buttonLabelledBy}
+      >
+        <Span id={valueId} className="truncate">{selectedLabel || '\u00A0'}</Span>
+        <Svg
+          className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </Svg>
+      </Button>
+
+      {isOpen && dropdownPos && (
+        <Div
+          ref={dropdownRef}
+          className={`absolute left-0 z-[9999] w-full bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-600 overflow-hidden ${dropdownPos === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'}`}
+          role="listbox"
+        >
+          {searchable && (
+            <Div className="p-2 border-b border-gray-200 dark:border-gray-600">
+              <Input
+                ref={searchInputRef}
+                type="text"
+                value={searchTerm}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
+                placeholder={searchPlaceholder ?? selectSearchPlaceholder()}
+                className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg text-sm text-gray-700 dark:text-gray-200 placeholder-gray-600 dark:placeholder-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                role="searchbox"
+                aria-label={searchPlaceholder ?? selectSearchLabel()}
+              />
+        </Div>
+      )}
+          <Div className="py-2 max-h-60 overflow-auto">
+            {visibleOptions && visibleOptions.length === 0 && (
+              <Div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
+                {searchTerm ? selectNoResults() : ''}
+              </Div>
+            )}
+            {(visibleOptions ?? []).map((option) => {
+              const isSelected = String(option.value) === String(value);
+              return (
+                <Button
+                  key={option.value}
+                  type="button"
+                  onClick={() => !option.disabled && handleSelect(option.value)}
+                  disabled={option.disabled}
+                  className={`w-full px-4 py-3 text-left flex items-center justify-between gap-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                    isSelected ? 'text-blue-600 dark:text-blue-300 font-medium' : 'text-gray-700 dark:text-gray-200'
+                  } ${option.disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  role="option"
+                  aria-selected={isSelected}
+                >
+                  {option.description ? (
+                    <Div className="flex flex-col gap-0.5 min-w-0">
+                      <Span>{option.label}</Span>
+                      <Span className="text-xs font-normal text-gray-500 dark:text-gray-300 whitespace-normal">{option.description}</Span>
+                    </Div>
+                  ) : (
+                    <Span>{option.label}</Span>
+                  )}
+                  {isSelected && (
+                    <Svg
+                      className="w-5 h-5 flex-shrink-0 text-blue-600 dark:text-blue-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </Svg>
+                  )}
+                </Button>
+              );
+            })}
+          </Div>
+        </Div>
+      )}
+    </Div>
+  );
+};

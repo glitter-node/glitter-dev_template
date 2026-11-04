@@ -1,0 +1,500 @@
+import React, { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
+import { Div } from '../basic/Div';
+import { Button } from '../basic/Button';
+import { Span } from '../basic/Span';
+import { Icon } from '../basic/Icon';
+import { IconName } from '../basic/IconTypes';
+import { Input } from '../basic/Input';
+import type { EditorAttrs } from '../../types';
+import { handleLinkClick, resolveLinkHref } from '../../support/navigationLink';
+
+// G7Core.t() 번역 함수 참조 — 번역이 없거나 엔진 밖(단위 테스트)이면 대체 문구를 쓴다
+const tOr = (key: string, fallback: string, params?: Record<string, string | number>): string => {
+  const translated = (window as any).G7Core?.t?.(key, params);
+  return typeof translated === 'string' && translated !== key ? translated : fallback;
+};
+
+/**
+ * 알림 아이템 인터페이스
+ */
+/**
+ * 닫을 때 읽음 처리로 한 번에 넘기는 id 의 최대 개수.
+ *
+ * 코어 읽음 일괄 API(`POST .../notifications/read-batch`)의 `ids` 상한(NotificationBatchReadRequest `max:100`)과 같다.
+ */
+export const READ_BATCH_MAX_IDS = 100;
+
+export interface NotificationItem {
+  id: string | number;
+  title: string;
+  message: string;
+  time: string;
+  read?: boolean;
+  iconName?: IconName;
+  data?: Record<string, unknown>;
+  /**
+   * 알림의 이동 주소(응답 `url`) — 이 사이트 주소면 알림 본문을 `<a href>` 로 그려 가운데 클릭·Ctrl+클릭 「새 탭에서 열기」가 된다(#757).
+   * 바깥 주소·실행 주소는 링크로 그리지 않는다(줄 클릭 → `onNotificationClick` → 레이아웃의 `fallbackPath`).
+   */
+  url?: string;
+  onClick?: () => void;
+}
+
+/**
+ * NotificationCenter Props
+ */
+export interface NotificationCenterProps {
+  /** 알림 목록 */
+  notifications?: NotificationItem[];
+  /** 서버 기반 미읽음 알림 수 */
+  unreadCount?: number;
+  /** 추가 로드 가능 여부 */
+  hasMore?: boolean;
+  /** 로딩 상태 */
+  loading?: boolean;
+  /** 알림 제목 텍스트 */
+  titleText?: string;
+  /** 알림 없음 텍스트 */
+  emptyText?: string;
+  /** "모두 읽음" 버튼 텍스트 */
+  markAllReadText?: string;
+  /** "모두 삭제" 버튼 텍스트 */
+  deleteAllText?: string;
+  /** "미읽음만" 체크박스 텍스트 */
+  unreadOnlyText?: string;
+  /** "미읽음만" 체크박스 상태 */
+  unreadOnly?: boolean;
+  /** 알림 클릭 핸들러 (알림 전체 객체 전달) */
+  onNotificationClick?: (notification: NotificationItem) => void;
+  /** 드롭다운 닫힐 때 (뷰포트에 들어온 미읽음 알림 ID 목록 — READ_BATCH_MAX_IDS 건 단위로 나눠 여러 번 호출될 수 있음) */
+  onClose?: (visibleUnreadIds: (string | number)[]) => void;
+  /** 추가 로드 요청 */
+  onLoadMore?: () => void;
+  /** 모두 읽음 처리 요청 */
+  onMarkAllRead?: () => void;
+  /** 모두 삭제 요청 */
+  onDeleteAll?: () => void;
+  /** 개별 알림 삭제 요청 (알림 전체 객체 전달) */
+  onDelete?: (notification: NotificationItem) => void;
+  /** "미읽음만" 체크박스 토글 */
+  onUnreadOnlyToggle?: (checked: boolean) => void;
+  /**
+   * 읽음 처리 권한 — false 면 「모두 읽음」 버튼을 숨기고, 닫을 때 보인 미읽음 id 를 onClose 로 보내지 않는다.
+   * 생략하면 true(기존 동작). 관리자 템플릿 NotificationCenter 와 같은 계약.
+   */
+  canUpdate?: boolean;
+  /** 삭제 권한 — false 면 「모두 삭제」·개별 삭제 버튼을 숨긴다. 생략하면 true(기존 동작) */
+  canDelete?: boolean;
+  /** 드롭다운 정렬 방향 — "right"(기본): 우측 정렬되어 좌측으로 확장 / "left": 좌측 정렬되어 우측으로 확장 */
+  dropdownAlign?: 'left' | 'right';
+  className?: string;
+  /** DOM id 속성 (레이아웃 편집기 코어 일괄 ID) */
+  id?: string;
+  /** 레이아웃 편집기 주입 속성 (편집 모드 전용, 루트에 spread) */
+  editorAttrs?: EditorAttrs;
+}
+
+/**
+ * NotificationCenter 컴포넌트 (User)
+ *
+ * 알림 센터 - 알림 목록 표시, 무한스크롤, 읽음 추적.
+ * sirsoft-admin_basic의 NotificationCenter와 동일 API/동작을 제공한다.
+ *
+ * @example
+ * ```tsx
+ * <NotificationCenter
+ *   notifications={[
+ *     { id: 1, title: '새 댓글', message: '게시물에 댓글이 달렸습니다', time: '5분 전' }
+ *   ]}
+ *   unreadCount={5}
+ *   hasMore={true}
+ *   titleText="알림"
+ *   emptyText="알림이 없습니다."
+ * />
+ * ```
+ */
+export const NotificationCenter: React.FC<NotificationCenterProps> = ({
+  notifications = [],
+  unreadCount = 0,
+  hasMore = false,
+  loading = false,
+  titleText,
+  emptyText,
+  markAllReadText,
+  deleteAllText,
+  unreadOnlyText,
+  unreadOnly = false,
+  onNotificationClick,
+  onClose,
+  canUpdate = true,
+  canDelete = true,
+  onLoadMore,
+  onMarkAllRead,
+  onDeleteAll,
+  onDelete,
+  onUnreadOnlyToggle,
+  dropdownAlign = 'right',
+  className = '',
+  id,
+  editorAttrs,
+}) => {
+  const resolvedTitleText = titleText ?? tOr('mypage.notifications.title', 'Notifications');
+  const resolvedEmptyText = emptyText ?? tOr('mypage.notifications.empty', 'No notifications.');
+  const resolvedMarkAllReadText = markAllReadText ?? tOr('mypage.notifications.mark_all_read', 'Mark all as read');
+  const resolvedDeleteAllText = deleteAllText ?? tOr('mypage.notifications.delete_all', 'Delete all');
+  const resolvedUnreadOnlyText = unreadOnlyText ?? tOr('mypage.notifications.unread_only', 'Unread only');
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [dropdownPlacement, setDropdownPlacement] = useState<'up' | 'down'>('down');
+  const notificationRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const visibleUnreadIdsRef = useRef<Set<string | number>>(new Set());
+
+  // 무한스크롤 관련 최신 값 참조 (observer 재등록 없이 최신 prop 접근)
+  const onLoadMoreRef = useRef(onLoadMore);
+  const hasMoreRef = useRef(hasMore);
+  const loadingRef = useRef(loading);
+  const notificationsCountRef = useRef(notifications.length);
+  // 마지막 onLoadMore 발행 시점의 notifications.length — 동일 길이에서 중복 발행 가드
+  const lastRequestedCountRef = useRef<number>(-1);
+
+  useEffect(() => {
+    onLoadMoreRef.current = onLoadMore;
+    hasMoreRef.current = hasMore;
+    loadingRef.current = loading;
+    notificationsCountRef.current = notifications.length;
+  });
+
+  /**
+   * 무한스크롤 — IntersectionObserver
+   *
+   * observer는 드롭다운 열림/닫힘 전환 시에만 재등록한다.
+   * 목록이 append되거나 loading/hasMore가 바뀌어도 observer를 새로 만들지 않으므로,
+   * sentinel이 이미 뷰포트에 있는 상태에서 재등록 시 즉시 intersecting callback이
+   * 중복 발행되던 문제를 방지한다.
+   */
+  useEffect(() => {
+    if (!sentinelRef.current || !scrollRef.current || !showNotifications) return;
+
+    // 드롭다운이 새로 열릴 때마다 중복 가드 초기화
+    lastRequestedCountRef.current = -1;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        if (loadingRef.current || !hasMoreRef.current) return;
+        // B안 가드: 같은 length에서 이미 한 번 발행했다면 skip
+        if (lastRequestedCountRef.current === notificationsCountRef.current) return;
+        lastRequestedCountRef.current = notificationsCountRef.current;
+        onLoadMoreRef.current?.();
+      },
+      { root: scrollRef.current, threshold: 0.1 }
+    );
+
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [showNotifications]);
+
+  /**
+   * 뷰포트 내 미읽음 알림 추적 — IntersectionObserver
+   */
+  useEffect(() => {
+    if (!scrollRef.current || !showNotifications) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const id = entry.target.getAttribute('data-notification-id');
+          const isUnread = entry.target.getAttribute('data-unread') === 'true';
+          if (id && isUnread && entry.isIntersecting) {
+            visibleUnreadIdsRef.current.add(id);
+          }
+        });
+      },
+      {
+        root: scrollRef.current,
+        threshold: 0.5,
+      }
+    );
+
+    const items = scrollRef.current.querySelectorAll('[data-notification-id]');
+    items.forEach((item) => observer.observe(item));
+
+    return () => observer.disconnect();
+  }, [showNotifications, notifications]);
+
+  useLayoutEffect(() => {
+    if (!showNotifications || !dropdownRef.current || !notificationRef.current) return;
+    const updatePlacement = () => {
+      if (!dropdownRef.current || !notificationRef.current) return;
+      const triggerRect = notificationRef.current.getBoundingClientRect();
+      const dropdownHeight = dropdownRef.current.getBoundingClientRect().height;
+      const spaceBelow = window.innerHeight - triggerRect.bottom;
+      setDropdownPlacement(spaceBelow < dropdownHeight + 8 && triggerRect.top > spaceBelow ? 'up' : 'down');
+    };
+    updatePlacement();
+    window.addEventListener('resize', updatePlacement);
+    window.addEventListener('scroll', updatePlacement, true);
+    return () => {
+      window.removeEventListener('resize', updatePlacement);
+      window.removeEventListener('scroll', updatePlacement, true);
+    };
+  }, [showNotifications, notifications.length]);
+
+  /**
+   * 뱃지에 표시할 카운트 (handleClose 보다 먼저 선언 — deps 참조 순서)
+   */
+  const displayCount = unreadCount > 0 ? unreadCount : notifications.filter((n) => !n.read).length;
+
+  /**
+   * 드롭다운 닫기 — 뷰포트에 들어온 미읽음 알림 ID 전달
+   *
+   * 불필요한 read-batch 호출 방지:
+   *  1) displayCount 가 0 이면 이미 모두 읽음/삭제 처리된 상태 → 전체 skip
+   *  2) 뷰포트에 나타났던 ID 중 현재 notifications 기준 여전히 unread 인 것만 전달
+   *     ("모두 읽음" onSuccess 로 notifications 가 갱신되면 필터 결과가 빈 배열이 됨)
+   */
+  const handleClose = useCallback(() => {
+    if (showNotifications) {
+      // 읽음 처리 권한이 없으면 서버가 403 으로 거절하므로 요청하지 않는다.
+      if (canUpdate && displayCount > 0) {
+        const unreadIds = Array.from(visibleUnreadIdsRef.current).filter((id) => {
+          const n = notifications.find((item) => String(item.id) === String(id));
+          return n && !n.read;
+        });
+        // 읽음 일괄 API 는 한 번에 READ_BATCH_MAX_IDS 건까지만 받는다 — 더보기로 많이 펼친 뒤
+        // 닫으면 그 수를 넘을 수 있어, 넘긴 채 보내면 요청 전체가 422 로 거절된다. 한도 단위로 나눠 보낸다.
+        for (let i = 0; i < unreadIds.length; i += READ_BATCH_MAX_IDS) {
+          onClose?.(unreadIds.slice(i, i + READ_BATCH_MAX_IDS));
+        }
+      }
+      visibleUnreadIdsRef.current.clear();
+      setShowNotifications(false);
+    }
+  }, [showNotifications, onClose, displayCount, notifications, canUpdate]);
+
+  /**
+   * 외부 클릭 감지 — 드롭다운이 열려 있을 때만 리스너 등록
+   * (stale closure 방지: showNotifications 변경 시 리스너 재등록)
+   * 주의: handleClose가 useCallback으로 선언된 이후에 위치해야 TDZ 위반 방지
+   */
+  useEffect(() => {
+    if (!showNotifications) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        notificationRef.current &&
+        !notificationRef.current.contains(event.target as Node)
+      ) {
+        handleClose();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showNotifications, handleClose]);
+
+  /**
+   * 드롭다운 토글
+   */
+  const handleToggle = useCallback(() => {
+    if (showNotifications) {
+      handleClose();
+    } else {
+      setShowNotifications(true);
+    }
+  }, [showNotifications, handleClose]);
+
+  return (
+    <Div ref={notificationRef} className={`relative ${className}`} id={id} {...editorAttrs}>
+      <Button
+        onClick={handleToggle}
+        className="relative p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors cursor-pointer"
+        aria-label={resolvedTitleText}
+      >
+        <Icon name={IconName.Bell} className="w-5 h-5" />
+        {/* 고정 w-5 원에 「99+」(약 23px)가 들어가면 양옆으로 넘친다 — 최소 폭 + 좌우 여백으로 늘어나게 둔다 */}
+        {displayCount > 0 && (
+          <Span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 flex items-center justify-center text-xs font-bold text-white bg-red-600 dark:bg-red-600 rounded-full">
+            {displayCount > 99 ? '99+' : displayCount}
+          </Span>
+        )}
+      </Button>
+
+      {/* 알림 드롭다운 */}
+      {showNotifications && (
+        <Div ref={dropdownRef} className={`absolute ${dropdownAlign === 'left' ? 'left-0' : 'right-0'} w-80 max-w-[calc(100vw-1rem)] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 ${dropdownPlacement === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'}`}>
+          <Div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
+            <Div className="flex items-center gap-3 min-w-0">
+              <Span className="font-semibold text-gray-900 dark:text-white">{resolvedTitleText}</Span>
+              {onUnreadOnlyToggle && (
+                <Div
+                  className="flex items-center gap-1.5 cursor-pointer select-none"
+                  onClick={() => onUnreadOnlyToggle(!unreadOnly)}
+                >
+                  <Input
+                    type="checkbox"
+                    checked={unreadOnly}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      e.stopPropagation();
+                      onUnreadOnlyToggle(e.target.checked);
+                    }}
+                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                    className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-400 focus:ring-blue-500 dark:focus:ring-blue-400 cursor-pointer"
+                  />
+                  <Span className="text-xs text-gray-600 dark:text-gray-400">{resolvedUnreadOnlyText}</Span>
+                </Div>
+              )}
+            </Div>
+            <Div className="flex items-center gap-3 flex-shrink-0">
+              {onMarkAllRead && canUpdate && displayCount > 0 && (
+                <Button
+                  onClick={() => {
+                    onMarkAllRead();
+                    visibleUnreadIdsRef.current.clear();
+                  }}
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline cursor-pointer"
+                >
+                  {resolvedMarkAllReadText}
+                </Button>
+              )}
+              {onDeleteAll && canDelete && notifications.length > 0 && (
+                <Button
+                  onClick={() => {
+                    // 드롭다운은 닫지 않음 — 확인 모달이 닫히면 다시 자연스럽게 노출되어야 하고,
+                    // 사용자가 모달 취소 시에도 컨텍스트 유지 (요구사항)
+                    onDeleteAll();
+                  }}
+                  className="text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:underline cursor-pointer"
+                >
+                  {resolvedDeleteAllText}
+                </Button>
+              )}
+            </Div>
+          </Div>
+          <Div ref={scrollRef} className="max-h-96 overflow-y-auto">
+            {notifications.length === 0 && !loading ? (
+              <Div className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                <Span>{resolvedEmptyText}</Span>
+              </Div>
+            ) : (
+              <>
+                {notifications.map((notification) => {
+                  const isUnread = !notification.read;
+                  // 알림 클릭 — 종전 동작(항목 콜백 → 알림 클릭 콜백 → 닫기)
+                  const activate = () => {
+                    notification.onClick?.();
+                    onNotificationClick?.(notification);
+                    setShowNotifications(false);
+                  };
+                  // 이동 주소가 이 사이트 주소면 아이콘·본문을 링크로 감싼다. 삭제 단추는 링크 밖 형제로 둔다(상호작용 요소 중첩 금지).
+                  // 바깥 주소(다른 사이트)는 링크로 그리지 않는다 — 새 창 링크로 그리면 보통 클릭도 바깥 사이트를 열고 읽음·이동 콜백을
+                  // 건너뛰었다. 링크가 아니면 줄 클릭이 콜백을 부르고, 레이아웃 navigate 의 fallbackPath 가 알림 목록으로 보낸다(7.1.1).
+                  const resolved = resolveLinkHref(notification.url);
+                  const link = resolved && !resolved.external ? resolved : null;
+                  const body = (
+                    <>
+                      {notification.iconName && (
+                        <Icon
+                          name={notification.iconName}
+                          className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
+                            isUnread ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500'
+                          }`}
+                        />
+                      )}
+                      <Div className="flex-1 min-w-0">
+                        <Div
+                          className={`text-sm truncate ${
+                            isUnread
+                              ? 'font-semibold text-gray-900 dark:text-white'
+                              : 'font-normal text-gray-600 dark:text-gray-400'
+                          }`}
+                        >
+                          {notification.title}
+                        </Div>
+                        <Div
+                          className={`text-sm mt-1 line-clamp-2 ${
+                            isUnread ? 'text-gray-700 dark:text-gray-300' : 'text-gray-500 dark:text-gray-400'
+                          }`}
+                        >
+                          {notification.message}
+                        </Div>
+                        <Div className="text-gray-500 dark:text-gray-400 text-xs mt-1 font-mono">
+                          {notification.time}
+                        </Div>
+                      </Div>
+                    </>
+                  );
+                  return (
+                    <Div
+                      key={notification.id}
+                      data-notification-id={notification.id}
+                      data-unread={isUnread ? 'true' : 'false'}
+                      onClick={activate}
+                      className={`group flex items-start gap-3 px-4 py-3 text-left border-b border-gray-100 dark:border-gray-700 transition-colors cursor-pointer ${
+                        isUnread
+                          ? 'bg-blue-50/70 dark:bg-blue-900/20 hover:bg-blue-50 dark:hover:bg-blue-900/30'
+                          : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                      }`}
+                    >
+                      {link ? (
+                        <a
+                          href={link.href}
+                          className="flex items-start gap-3 flex-1 min-w-0"
+                          onClick={(event) => {
+                            // 줄(바깥 Div)의 클릭 처리가 다시 부르지 않게 여기서 멈춘다 — 수정키 클릭은 브라우저에 맡긴다
+                            event.stopPropagation();
+                            handleLinkClick(event, activate);
+                          }}
+                        >
+                          {body}
+                        </a>
+                      ) : (
+                        body
+                      )}
+                      <Div className="flex flex-col items-center gap-2 flex-shrink-0">
+                        {isUnread && (
+                          <Span className="w-2 h-2 bg-blue-500 dark:bg-blue-400 rounded-full mt-1.5" />
+                        )}
+                        {onDelete && canDelete && (
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDelete(notification);
+                            }}
+                            className="p-1 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                            aria-label={tOr('common.delete_notification', 'Delete notification')}
+                          >
+                            <Icon name={IconName.Trash} className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </Div>
+                    </Div>
+                  );
+                })}
+                {/* 무한스크롤 sentinel */}
+                {hasMore && (
+                  <Div ref={sentinelRef} className="px-4 py-3 text-center">
+                    {loading ? (
+                      <Span className="text-sm text-gray-500 dark:text-gray-400">...</Span>
+                    ) : (
+                      <Span className="text-sm text-gray-500 dark:text-gray-400" />
+                    )}
+                  </Div>
+                )}
+                {loading && !hasMore && notifications.length > 0 && (
+                  <Div className="px-4 py-2 text-center">
+                    <Span className="text-sm text-gray-500 dark:text-gray-400">...</Span>
+                  </Div>
+                )}
+              </>
+            )}
+          </Div>
+        </Div>
+      )}
+    </Div>
+  );
+};
+
+export default NotificationCenter;

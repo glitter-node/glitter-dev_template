@@ -1,0 +1,717 @@
+// e2e:allow 알림 권한 prop 의 미전달 기본값만 true 로(NotificationCenter 와 동일). 기본 레이아웃은 권한 값을 명시로 넘겨 표준 설치 화면은 불변이고, 미전달은 keep 으로 남은 옛 _user_base 에서만 생긴다 — 단위 회귀는 HeaderNotificationAbilities.test.tsx.
+/**
+ * Header 컴포넌트
+ *
+ * 사이트 상단 헤더 컴포넌트입니다.
+ * 로고, 검색바, 네비게이션, 사용자 메뉴, 장바구니, 알림을 포함합니다.
+ *
+ * @see 화면 구성:
+ * ┌─────────────────────────────────────────────────────────────────┐
+ * │ [Logo] [검색바................] [🔔] [🛒(3)] [👤 닉네임 ▼]     │
+ * ├─────────────────────────────────────────────────────────────────┤
+ * │ [홈] [🔥인기] [🛒쇼핑] [자유게시판] [질문답변] [갤러리] [더보기▼] │
+ * └─────────────────────────────────────────────────────────────────┘
+ */
+
+import React, { useState, useRef, useEffect, useId } from 'react';
+
+// 기본 컴포넌트 import
+import { Div } from '../basic/Div';
+import { Button } from '../basic/Button';
+import { Span } from '../basic/Span';
+import { Img } from '../basic/Img';
+import { Icon } from '../basic/Icon';
+import { Nav } from '../basic/Nav';
+import { Header as HeaderBasic } from '../basic/Header';
+import { Hr } from '../basic/Hr';
+import { A } from '../basic/A';
+import { LinkButton } from '../../support/LinkButton';
+
+// ThemeToggle 컴포넌트 import
+import { ThemeToggle } from './ThemeToggle';
+
+// Avatar 컴포넌트 import
+import { Avatar } from './Avatar';
+
+// SlotContainer — 헤더 통화 등 모듈 주입 UI 를 떙겨 렌더 (헤더는 주입 모듈을 모름)
+import { SlotContainer } from './SlotContainer';
+
+// NotificationCenter 컴포넌트 import
+import { NotificationCenter, type NotificationItem } from './NotificationCenter';
+import { getLocaleDisplayName } from '../../support/localeName';
+
+// G7Core.t() 번역 함수 참조
+const t = (key: string, params?: Record<string, string | number>) =>
+  (window as any).G7Core?.t?.(key, params) ?? key;
+
+// G7Core.dispatch() navigate 헬퍼
+const navigate = (path: string) => {
+  (window as any).G7Core?.dispatch?.({
+    handler: 'navigate',
+    params: { path },
+  });
+};
+
+interface Board {
+  id: number;
+  name: string;
+  slug: string;
+  icon?: string;
+}
+
+interface User {
+  uuid: string;
+  name: string;
+  avatar?: string;
+  is_admin?: boolean;
+}
+
+interface HeaderProps {
+  /** 사이트 로고 URL */
+  logo?: string;
+  /** 사이트 이름 */
+  siteName?: string;
+  /** 현재 로그인된 사용자 */
+  user?: User | null;
+  /** 장바구니 아이템 수 */
+  cartCount?: number;
+  /** 읽지 않은 알림 수 */
+  notificationCount?: number;
+  /** 게시판 목록 */
+  boards?: Board[];
+  /** 탭에 표시할 최대 게시판 수 */
+  maxVisibleBoards?: number;
+  /** 모바일 메뉴 열기 콜백 */
+  onMobileMenuOpen?: () => void;
+  /** 사용 가능한 언어 목록 */
+  availableLocales?: string[];
+  /** 현재 언어 */
+  currentLocale?: string;
+  /** 쇼핑몰 기본 경로 (예: "/shop", "/") */
+  shopBase?: string;
+  /**
+   * 게시판 모듈이 켜져 있는가 — false 면 「인기글」 탭과 게시판 탭·더보기를 그리지 않는다.
+   * 기본값 true: 레이아웃이 `_global.activeModules` 로 판정해 넘긴다. 값이 오지 않는 경우(루트 레이아웃을 keep 으로
+   * 업데이트해 새 바인딩이 없는 사이트)에는 지금처럼 보인다(#822).
+   */
+  boardEnabled?: boolean;
+  /** 쇼핑몰 모듈이 켜져 있는가 — false 면 장바구니 단추·「쇼핑」 탭·회원 메뉴의 주문내역·위시리스트·비회원 「주문조회」를 그리지 않는다. 기본값 true(위와 같은 이유) */
+  shopEnabled?: boolean;
+  /** 검색칸을 그리는가 — 레이아웃은 게시판·쇼핑몰·페이지 중 하나라도 켜져 있으면 true 를 넘긴다(검색 공급자가 없으면 숨김). 기본값 true */
+  searchEnabled?: boolean;
+  /**
+   * 봇 화면(seo-config header_nav)의 「쇼핑」 링크 주소(예: "/shop/products") — 이 컴포넌트는 읽지 않는다(화면은 shopBase 로 만든다).
+   * 옛 코어(7.1.3 이하)의 봇 렌더가 `{shopBase}/products` 같은 섞인 attrs 패턴을 치환하지 못해 레이아웃이 완성된 주소를 넘긴다.
+   */
+  shopProductsHref?: string;
+  /** 추가 CSS 클래스 */
+  className?: string;
+  /** 레이아웃 편집기 식별 속성(data-editor-*) — 시각적 루트에 spread */
+  editorAttrs?: Record<string, unknown>;
+
+  // ===== 알림센터 드롭다운 Props =====
+  /** 알림 목록 (NotificationCenter에 전달) */
+  notifications?: NotificationItem[];
+  /** 더 불러올 페이지 존재 여부 */
+  notificationHasMore?: boolean;
+  /** 알림 로딩 상태 */
+  notificationLoading?: boolean;
+  /** "안 읽은 알림만" 필터 상태 */
+  notificationUnreadOnly?: boolean;
+  /**
+   * 알림 읽음 처리 권한 — false 면 [모두 읽음] 숨김·닫을 때 읽음 처리 생략.
+   * 기본값 true(NotificationCenter 와 같음): 권한이 없으면 레이아웃이 abilities 를 읽어 false 를 명시한다.
+   * 값이 오지 않는 경우(루트 레이아웃을 keep 으로 업데이트해 바인딩이 없는 사이트)에 기능을 숨기지 않으며, 최종 방어선은 서버 403.
+   */
+  notificationCanUpdate?: boolean;
+  /** 알림 삭제 권한 — false 면 [모두 삭제]·개별 삭제 숨김. 기본값 true(위와 같은 이유) */
+  notificationCanDelete?: boolean;
+  /** 알림 드롭다운 제목 */
+  notificationTitleText?: string;
+  /** 알림 없음 텍스트 */
+  notificationEmptyText?: string;
+  /** "모두 읽음" 텍스트 */
+  notificationMarkAllReadText?: string;
+  /** "모두 삭제" 텍스트 */
+  notificationDeleteAllText?: string;
+  /** "안 읽은 알림만" 체크박스 텍스트 */
+  notificationUnreadOnlyText?: string;
+  /** 알림 드롭다운 닫힐 때 (뷰포트에 보인 미읽음 ID 배열 전달) */
+  onNotificationClose?: (visibleUnreadIds: (string | number)[]) => void;
+  /** 개별 알림 클릭 */
+  onNotificationClick?: (notification: NotificationItem) => void;
+  /** 무한 스크롤: 추가 로드 */
+  onNotificationLoadMore?: () => void;
+  /** "모두 읽음" 처리 */
+  onNotificationMarkAllRead?: () => void;
+  /** "모두 삭제" 요청 (모달 오픈) */
+  onNotificationDeleteAll?: () => void;
+  /** 개별 알림 삭제 */
+  onNotificationDelete?: (notification: NotificationItem) => void;
+  /** "안 읽은 알림만" 체크박스 토글 */
+  onNotificationUnreadOnlyToggle?: (checked: boolean) => void;
+}
+
+/**
+ * 사이트 헤더 컴포넌트
+ *
+ * @example
+ * ```json
+ * // 레이아웃 JSON에서 사용
+ * {
+ *   "type": "composite",
+ *   "name": "Header",
+ *   "props": {
+ *     "logo": "{{_global.settings.site_logo}}",
+ *     "siteName": "{{_global.settings.site_name}}",
+ *     "user": "{{_global.currentUser}}",
+ *     "cartCount": "{{_global.cartCount}}",
+ *     "notificationCount": "{{_global.notificationCount}}",
+ *     "boards": "{{boards.data}}",
+ *     "maxVisibleBoards": 5
+ *   }
+ * }
+ * ```
+ */
+const Header: React.FC<HeaderProps> = ({
+  logo,
+  siteName = '그누보드7',
+  user,
+  cartCount = 0,
+  notificationCount = 0,
+  boards = [],
+  maxVisibleBoards = 5,
+  onMobileMenuOpen,
+  availableLocales = [],
+  currentLocale = 'ko',
+  shopBase = '/shop',
+  boardEnabled = true,
+  shopEnabled = true,
+  className = '',
+  editorAttrs,
+  // 알림센터
+  notifications = [],
+  notificationHasMore = false,
+  notificationLoading = false,
+  notificationUnreadOnly = false,
+  notificationCanUpdate = true,
+  notificationCanDelete = true,
+  notificationTitleText,
+  notificationEmptyText,
+  notificationMarkAllReadText,
+  notificationDeleteAllText,
+  notificationUnreadOnlyText,
+  onNotificationClose,
+  onNotificationClick,
+  onNotificationLoadMore,
+  onNotificationMarkAllRead,
+  onNotificationDeleteAll,
+  onNotificationDelete,
+  onNotificationUnreadOnlyToggle,
+}) => {
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showMoreBoards, setShowMoreBoards] = useState(false);
+  const [showLangMenu, setShowLangMenu] = useState(false);
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const moreButtonRef = useRef<HTMLDivElement>(null);
+  const langMenuRef = useRef<HTMLDivElement>(null);
+  // 언어 메뉴는 listbox 패턴이다(7.1.0, 관리자 템플릿 LanguageSelector 와 같은 계약) — 단추가 aria-controls 로
+  // 목록을 가리키고, 열면 현재 언어 항목에 초점을 두며 ↓/↑/Home/End 로 옮기고 Enter 로 고른다. Esc 는 닫고 단추로.
+  const langListboxId = `${useId()}-language-listbox`;
+  const langTriggerRef = useRef<HTMLButtonElement>(null);
+  const langOptionRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const langPendingFocusRef = useRef<number | null>(null);
+
+  // G7Core.useResponsive를 통해 반응형 상태 구독 (G7 표준 — 위지윅 overrideWidth 호환)
+  const G7Core = (window as any).G7Core;
+  const useResponsive = G7Core?.useResponsive;
+  const responsiveValue = useResponsive?.();
+  const isMobile = responsiveValue
+    ? responsiveValue.width < 768
+    : typeof window !== 'undefined' && window.innerWidth < 768;
+
+  // 경로 변경 감지 (SPA 네비게이션 대응)
+  useEffect(() => {
+    const handlePopState = () => setCurrentPath(window.location.pathname);
+    window.addEventListener('popstate', handlePopState);
+
+    // G7Core의 navigate 이벤트 감지
+    const originalPushState = history.pushState;
+    // audit:allow extension-private-core-internals reason: 템플릿 자기 컴포넌트가 원본 pushState 를 그대로 호출하고 현재 경로만 갱신하는 래퍼
+    history.pushState = function(...args) {
+      originalPushState.apply(this, args);
+      setCurrentPath(window.location.pathname);
+    };
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      // audit:allow extension-private-core-internals reason: 템플릿 자기 컴포넌트가 언마운트 시 위 래퍼를 걷어 원본 pushState 를 되돌린다
+      history.pushState = originalPushState;
+    };
+  }, []);
+
+  // 경로 매칭 헬퍼 함수
+  const isActiveRoute = (path: string, exact = false): boolean => {
+    if (exact) {
+      return currentPath === path;
+    }
+    return currentPath === path || currentPath.startsWith(path + '/');
+  };
+
+  // 쇼핑 관련 경로 체크 (products, cart, checkout, category 등)
+  const isShopActive = (): boolean => {
+    const base = shopBase === '/' ? '' : shopBase;
+    return currentPath.startsWith(`${base}/products`) ||
+           currentPath.startsWith(`${base}/cart`) ||
+           currentPath.startsWith(`${base}/checkout`) ||
+           currentPath.startsWith(`${base}/category`);
+  };
+
+  // 네비게이션 버튼 스타일
+  const getNavButtonClass = (isActive: boolean): string => {
+    const baseClass = 'glitter-nav-link px-3 py-2 text-sm font-medium whitespace-nowrap cursor-pointer rounded-lg transition-colors';
+    if (isActive) {
+      return `${baseClass} glitter-nav-link-active`;
+    }
+    return `${baseClass} text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800`;
+  };
+
+  // 메뉴 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+      if (moreButtonRef.current && !moreButtonRef.current.contains(event.target as Node)) {
+        setShowMoreBoards(false);
+      }
+      if (langMenuRef.current && !langMenuRef.current.contains(event.target as Node)) {
+        setShowLangMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // 게시판 모듈이 꺼져 있으면 게시판 탭·더보기를 비운다(목록이 남아 있어도 — 옛 응답이 캐시에 남은 경우)
+  const navBoards = boardEnabled ? boards : [];
+  const visibleBoards = navBoards.slice(0, maxVisibleBoards);
+  const hiddenBoards = navBoards.slice(maxVisibleBoards);
+
+  const handleLogout = async () => {
+    // G7Core.dispatch를 사용하여 logout 핸들러 호출
+    // AuthManager가 토큰 삭제, 상태 초기화, 리다이렉트를 처리
+    (window as any).G7Core?.dispatch?.({
+      handler: 'logout',
+    });
+  };
+
+  // 언어 메뉴가 열린 뒤 맡겨 둔 항목으로 초점을 옮긴다
+  useEffect(() => {
+    if (!showLangMenu || langPendingFocusRef.current === null) return;
+    langOptionRefs.current[langPendingFocusRef.current]?.focus();
+    langPendingFocusRef.current = null;
+  }, [showLangMenu]);
+
+  // 언어 메뉴를 연다 — 초점은 현재 언어 항목(없으면 where 쪽 끝 항목)
+  const openLangMenu = (where: 'first' | 'last' = 'first') => {
+    const locales = availableLocales ?? [];
+    const selected = locales.indexOf(currentLocale);
+    const index = selected >= 0 ? selected : (where === 'last' ? locales.length - 1 : 0);
+    if (showLangMenu) {
+      langOptionRefs.current[index]?.focus();
+      return;
+    }
+    langPendingFocusRef.current = index;
+    setShowLangMenu(true);
+  };
+
+  // 언어 메뉴를 닫는다(returnFocus 면 단추로 초점)
+  const closeLangMenu = (returnFocus: boolean) => {
+    setShowLangMenu(false);
+    if (returnFocus) langTriggerRef.current?.focus();
+  };
+
+  // 언어 단추 키보드 — ↓/↑ 는 목록을 열고 항목으로 들어간다(Enter·Space 는 단추 기본 동작인 클릭)
+  const handleLangTriggerKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      openLangMenu(event.key === 'ArrowUp' ? 'last' : 'first');
+    }
+  };
+
+  // 언어 목록 키보드 — 항목 사이 이동, Esc 로 닫기, Tab 으로 벗어나면 닫기
+  const handleLangListboxKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const count = availableLocales?.length ?? 0;
+    if (count === 0) return;
+    const current = langOptionRefs.current.findIndex((el) => el === document.activeElement);
+    let next: number | null = null;
+    switch (event.key) {
+      case 'ArrowDown':
+        next = current < 0 ? 0 : (current + 1) % count;
+        break;
+      case 'ArrowUp':
+        next = current < 0 ? count - 1 : (current - 1 + count) % count;
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = count - 1;
+        break;
+      case 'Escape':
+        event.preventDefault();
+        event.stopPropagation();
+        closeLangMenu(true);
+        return;
+      case 'Tab':
+        closeLangMenu(false);
+        return;
+      default:
+        return;
+    }
+    event.preventDefault();
+    langOptionRefs.current[next]?.focus();
+  };
+
+  // 언어 변경 핸들러 — 헤더 독립 언어 버튼(코어 기능)에서 호출. setLocale 은 비회원도 동작.
+  const handleLocaleChange = (locale: string) => {
+    (window as any).G7Core?.dispatch?.({
+      handler: 'setLocale',
+      target: locale,
+    });
+    // 고른 뒤 초점은 언어 단추로 돌린다(목록 항목이 사라지며 초점이 문서 맨 위로 빠지지 않게)
+    closeLangMenu(true);
+  };
+
+  // 로케일 코드 → 표시명 (활성 언어팩 native_name 우선, 폴백 사전 — #148: state.get(경로) 는 인자를 받지 않아 언어팩 이름을 못 읽었다)
+  const getLocaleName = (locale: string): string => getLocaleDisplayName(locale);
+
+  return (
+    <HeaderBasic
+      {...((editorAttrs ?? {}) as Record<string, never>)}
+      className={`glitter-header glitter-header-root sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 ${className}`}
+    >
+      {/* 상단 바 */}
+      <Div className="glitter-header-bar max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <Div className="glitter-header-top flex items-center justify-between h-16">
+          {/* 로고 — 이름이 길면 이 칸이 먼저 줄어들고 최대 20rem 에서 한 줄로 잘린다. */}
+          <LinkButton href="/" onNavigate={() => navigate('/')} className="glitter-header-brand justify-start flex items-center gap-2 min-w-24 max-w-xs shrink-1000 cursor-pointer">
+            {logo ? (
+              <Img src={logo} alt={siteName} className="h-8 max-w-full object-contain object-left" />
+            ) : (
+              <Span className="text-xl font-bold text-gray-900 dark:text-white truncate">{siteName}</Span>
+            )}
+          </LinkButton>
+
+          {!isMobile && (
+            <Nav className="glitter-header-inline-nav min-w-0 flex-1">
+              <Div className="glitter-primary-nav flex items-center gap-1 overflow-x-auto">
+                <LinkButton href="/search" onNavigate={() => navigate('/search')} className={getNavButtonClass(isActiveRoute('/search'))} data-testid="nav-search" aria-current={isActiveRoute('/search') ? 'page' : undefined}>
+                  <Icon name="search" className="w-5 h-5" />
+                  {t('common.search')}
+                </LinkButton>
+                {boardEnabled && (
+                  <LinkButton href="/boards/popular" onNavigate={() => navigate('/boards/popular')} className={`flex items-center gap-1 ${getNavButtonClass(isActiveRoute('/boards/popular'))}`} data-testid="nav-popular" aria-current={isActiveRoute('/boards/popular') ? 'page' : undefined}>
+                    <Icon name="chart-line" className="w-5 h-5" />
+                    {t('nav.popular')}
+                  </LinkButton>
+                )}
+                {shopEnabled && (
+                  <LinkButton href={`${shopBase === '/' ? '' : shopBase}/products`} onNavigate={() => navigate(`${shopBase === '/' ? '' : shopBase}/products`)} className={`flex items-center gap-1 ${getNavButtonClass(isShopActive())}`} data-testid="nav-shop" aria-current={isShopActive() ? 'page' : undefined}>
+                    <Icon name="cubes" className="w-5 h-5" />
+                    {t('nav.shop')}
+                  </LinkButton>
+                )}
+                {visibleBoards.map((board) => (
+                  <LinkButton
+                    key={board.id}
+                    href={`/board/${board.slug}`}
+                    onNavigate={() => navigate(`/board/${board.slug}`)}
+                    className={`flex items-center max-w-xs ${getNavButtonClass(isActiveRoute(`/board/${board.slug}`))}`}
+                    aria-current={isActiveRoute(`/board/${board.slug}`) ? 'page' : undefined}
+                  >
+                    {board.icon && <Span className="mr-1">{board.icon}</Span>}
+                    <Span className="min-w-0 truncate">{board.name}</Span>
+                  </LinkButton>
+                ))}
+                {hiddenBoards.length > 0 && (
+                  <Div ref={moreButtonRef} className="relative">
+                    <Button
+                      onClick={() => {
+                        setShowMoreBoards(!showMoreBoards);
+                      }}
+                      className="glitter-nav-more flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                    >
+                      {t('nav.more')}
+                      <Icon name="chevron-down" className="w-4 h-4" />
+                    </Button>
+                    {showMoreBoards && (
+                      <Div className="absolute top-full left-0 mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 z-50">
+                        {hiddenBoards.map((board) => {
+                          const isActive = isActiveRoute(`/board/${board.slug}`);
+                          return (
+                            <LinkButton
+                              key={board.id}
+                              href={`/board/${board.slug}`}
+                              onNavigate={() => {
+                                navigate(`/board/${board.slug}`);
+                                setShowMoreBoards(false);
+                              }}
+                              className={`block w-full text-left px-4 py-2 text-sm cursor-pointer ${isActive ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                              aria-current={isActive ? 'page' : undefined}
+                            >
+                              {board.icon && <Span className="mr-1">{board.icon}</Span>}
+                              <Span className="block min-w-0 truncate">{board.name}</Span>
+                            </LinkButton>
+                          );
+                        })}
+                      </Div>
+                    )}
+                  </Div>
+                )}
+              </Div>
+            </Nav>
+          )}
+
+          {/* 우측 액션 버튼들 — 회원 이름만 줄어들 수 있고 나머지 단추는 제 폭을 지킨다. */}
+          <Div className="glitter-header-actions glitter-header-utilities flex items-center gap-2 shrink-1000">
+            {/* 다크모드 전환 */}
+            <ThemeToggle
+              autoText={t('common.theme.auto')}
+              lightText={t('common.theme.light')}
+              darkText={t('common.theme.dark')}
+            />
+
+            {/* 알림센터 드롭다운 — 로그인 사용자에게만 노출 */}
+            {user?.uuid && (
+              <NotificationCenter
+                notifications={notifications}
+                unreadCount={notificationCount}
+                hasMore={notificationHasMore}
+                loading={notificationLoading}
+                unreadOnly={notificationUnreadOnly}
+                canUpdate={notificationCanUpdate}
+                canDelete={notificationCanDelete}
+                titleText={notificationTitleText ?? t('mypage.notifications.title')}
+                emptyText={notificationEmptyText ?? t('mypage.notifications.empty')}
+                markAllReadText={notificationMarkAllReadText ?? t('mypage.notifications.mark_all_read')}
+                deleteAllText={notificationDeleteAllText ?? t('mypage.notifications.delete_all')}
+                unreadOnlyText={notificationUnreadOnlyText ?? t('mypage.notifications.unread_only')}
+                onClose={onNotificationClose}
+                onNotificationClick={onNotificationClick}
+                onLoadMore={onNotificationLoadMore}
+                onMarkAllRead={onNotificationMarkAllRead}
+                onDeleteAll={onNotificationDeleteAll}
+                onDelete={onNotificationDelete}
+                onUnreadOnlyToggle={onNotificationUnreadOnlyToggle}
+                dropdownAlign="right"
+              />
+            )}
+
+            {/* 장바구니 — 쇼핑몰 모듈이 꺼져 있으면 숨긴다 */}
+            {shopEnabled && (
+              <LinkButton href={`${shopBase}/cart`} onNavigate={() => navigate(`${shopBase}/cart`)} data-testid="header-cart" aria-label={t('nav.cart_with_count', { count: cartCount })} className="relative p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer">
+                <Icon name="shopping-cart" className="w-5 h-5" />
+                {cartCount > 0 && (
+                  <Span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 flex items-center justify-center text-xs bg-blue-600 dark:bg-blue-600 text-white rounded-full">
+                    {cartCount > 99 ? '99+' : cartCount}
+                  </Span>
+                )}
+              </LinkButton>
+            )}
+
+            {/* 언어 선택 — 헤더 독립 버튼(코어 기능, 비회원 포함 전체 노출). 공간 절약 위해 아이콘+로케일 코드만.
+                언어는 항상 존재(이커머스 무관) → 템플릿 헤더 내장. */}
+            {availableLocales && availableLocales.length > 1 && (
+              <Div ref={langMenuRef} className="relative">
+                <Button
+                  ref={langTriggerRef}
+                  onClick={() => (showLangMenu ? closeLangMenu(false) : openLangMenu())}
+                  onKeyDown={handleLangTriggerKeyDown}
+                  className="flex items-center gap-1.5 px-2.5 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg cursor-pointer transition-colors"
+                  aria-haspopup="listbox"
+                  aria-expanded={showLangMenu}
+                  aria-controls={showLangMenu ? langListboxId : undefined}
+                  aria-label={t('common.language')}
+                >
+                  <Icon name="globe" className="w-4 h-4" />
+                  <Span className="font-medium uppercase">{currentLocale}</Span>
+                  <Icon name="chevron-down" className="w-3 h-3" />
+                </Button>
+                {showLangMenu && (
+                  <Div
+                    id={langListboxId}
+                    role="listbox"
+                    aria-label={t('common.language')}
+                    onKeyDown={handleLangListboxKeyDown}
+                    className="absolute right-0 mt-2 w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 z-50 overflow-hidden"
+                  >
+                    {availableLocales.map((locale, index) => {
+                      const isActive = locale === currentLocale;
+                      return (
+                        <Button
+                          key={locale}
+                          ref={(el: HTMLButtonElement | null) => { langOptionRefs.current[index] = el; }}
+                          type="button"
+                          role="option"
+                          aria-selected={isActive}
+                          tabIndex={isActive ? 0 : -1}
+                          onClick={() => handleLocaleChange(locale)}
+                          className={`justify-start w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 cursor-pointer transition-colors ${
+                            isActive
+                              ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                          }`}
+                        >
+                          <Icon name="globe" className="w-4 h-4" />
+                          <Span className="flex-1 font-medium">{getLocaleName(locale)}</Span>
+                          {isActive && <Icon name="check" className="w-4 h-4" />}
+                        </Button>
+                      );
+                    })}
+                  </Div>
+                )}
+              </Div>
+            )}
+
+            {/* 통화 선택 — 이커머스 모듈이 'header_currency' 슬롯에 주입(layout_extensions).
+                헤더는 슬롯 이름만 알고 통화/모듈을 모름. 모듈 비활성 시 빈 슬롯 → 미렌더(인프라 자동 게이트).
+                id 지정 필수 — 같은 슬롯이 모바일 헤더 SlotContainer 와 동시 렌더되므로 주입 컴포넌트
+                root id 가 컨테이너별로 스코프되도록(SlotContainer 가 id 로 자식 root id 를 고유화) 한다. */}
+            <SlotContainer slotId="header_currency" id="header_currency_slot_desktop" className="flex items-center" />
+
+            {/* 사용자 메뉴 */}
+            {user?.uuid ? (
+              <Div ref={userMenuRef} className="glitter-account-menu relative">
+                <Button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  aria-haspopup="menu"
+                  aria-expanded={showUserMenu}
+                  className="glitter-account-trigger flex items-center gap-2 p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                >
+                  <Avatar
+                    avatar={user.avatar}
+                    name={user.name}
+                    size="sm"
+                  />
+                  {/* 이름은 한 줄 … (최대 8rem). truncate(nowrap)는 최소 폭이 이름 전체라 묶음이 줄지 못한다 — 줄바꿈을 허용하고(break-all)
+                      한 줄만 보이게(line-clamp-1) 해 최소 폭을 3rem 으로 낮춘다. 이름이 길어도 검색창이 좁아지지 않는다(#143). */}
+                  <Span className="hidden sm:line-clamp-1 break-all text-sm font-medium max-w-32 min-w-12" title={user.name}>{user.name}</Span>
+                  <Icon name="chevron-down" className="w-4 h-4" />
+                </Button>
+
+                {/* 드롭다운 메뉴 */}
+                {showUserMenu && (
+                  <Div className="glitter-account-dropdown absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 z-50">
+                    {/* 사용자 정보 헤더 */}
+                    <Div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                      <Div className="flex items-center gap-3">
+                        <Avatar
+                          avatar={user.avatar}
+                          name={user.name}
+                          size="md"
+                        />
+                        <Div className="min-w-0">
+                          <Div className="text-sm font-medium text-gray-900 dark:text-white truncate">{user.name}</Div>
+                          <Div className="text-xs text-gray-500 dark:text-gray-400">{t('common.member')}</Div>
+                        </Div>
+                      </Div>
+                    </Div>
+
+                    {/* 메뉴 항목 */}
+                    <Div className="py-1">
+                      {/* 관리자 메뉴 (is_admin일 때만 표시) - 하이퍼링크로 전체 페이지 새로고침 */}
+                      {user.is_admin && (
+                        <>
+                          <A
+                            href="/admin"
+                            className="block w-full text-left px-4 py-2 text-sm text-blue-600 dark:text-blue-300 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer font-medium"
+                          >
+                            <Icon name="settings" className="inline w-4 h-4 mr-2" />
+                            {t('common.admin_menu')}
+                          </A>
+                          <Hr className="my-1 border-gray-200 dark:border-gray-700" />
+                        </>
+                      )}
+                      <LinkButton href="/mypage" onNavigate={() => { navigate('/mypage'); setShowUserMenu(false); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
+                        <Icon name="user" className="inline w-4 h-4 mr-2" />
+                        {t('common.mypage')}
+                      </LinkButton>
+                      {/* 주문내역·위시리스트 — 쇼핑몰 모듈이 꺼져 있으면 숨긴다 */}
+                      {shopEnabled && (
+                        <>
+                          <LinkButton href="/mypage/orders" onNavigate={() => { navigate('/mypage/orders'); setShowUserMenu(false); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
+                            <Icon name="shopping-bag" className="inline w-4 h-4 mr-2" />
+                            {t('mypage.tabs.orders')}
+                          </LinkButton>
+                          <LinkButton href="/mypage/wishlist" onNavigate={() => { navigate('/mypage/wishlist'); setShowUserMenu(false); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
+                            <Icon name="heart" className="inline w-4 h-4 mr-2" />
+                            {t('mypage.tabs.wishlist')}
+                          </LinkButton>
+                        </>
+                      )}
+                    </Div>
+
+                    {/* 언어 선택은 헤더 독립 버튼으로 일원화(드롭다운에서 제거) — 비회원도 헤더에서 전환 가능 */}
+
+                    <Hr className="my-1 border-gray-200 dark:border-gray-700" />
+                    <Button
+                      onClick={handleLogout}
+                      className="block w-full text-left px-4 py-2 text-sm text-red-700 dark:text-red-300 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                    >
+                      <Icon name="right-from-bracket" className="inline w-4 h-4 mr-2" />
+                      {t('auth.logout')}
+                    </Button>
+                  </Div>
+                )}
+              </Div>
+            ) : (
+              <Div className="glitter-auth-actions flex items-center gap-1.5 whitespace-nowrap">
+                {/* 주문조회(쇼핑몰 모듈이 켜져 있을 때만) — 로그인 페이지로 진입. 회원은 로그인 후 redirect 파라미터로 마이페이지 주문 내역으로 이동, 비회원은 로그인 페이지의 '비회원 주문 조회' 링크로 폼 진입. 로그아웃된 회원이 비회원 페이지에서 막다른 길에 빠지는 케이스를 차단한다. */}
+                {shopEnabled && (
+                  <LinkButton
+                    href="/login?redirect=/mypage/orders"
+                    onNavigate={() => navigate('/login?redirect=/mypage/orders')}
+                    className="glitter-button-ghost glitter-auth-link px-2.5 py-2 text-sm font-medium cursor-pointer"
+                  >
+                    {t('shop.guest_order_form.nav_link')}
+                  </LinkButton>
+                )}
+                <LinkButton
+                  href="/login"
+                  onNavigate={() => navigate('/login')}
+                  className="glitter-button-ghost glitter-auth-link glitter-auth-login px-2.5 py-2 text-sm font-medium cursor-pointer"
+                >
+                  {t('auth.login')}
+                </LinkButton>
+                <LinkButton
+                  href="/register"
+                  onNavigate={() => navigate('/register')}
+                  className="glitter-button-primary glitter-auth-register ml-1 px-3 py-2 text-sm font-medium rounded-lg cursor-pointer"
+                >
+                  {t('auth.register_link')}
+                </LinkButton>
+              </Div>
+            )}
+
+            {/* 모바일 햄버거 메뉴 (모바일 전용) */}
+            {isMobile && (
+              <Button
+                onClick={onMobileMenuOpen}
+                aria-label={t('user.menu')}
+                className="glitter-mobile-menu-button p-2 text-gray-600 dark:text-gray-400"
+              >
+                <Icon name="menu" className="w-6 h-6 text-2xl leading-none" />
+              </Button>
+            )}
+          </Div>
+        </Div>
+      </Div>
+
+    </HeaderBasic>
+  );
+};
+
+export default Header;

@@ -1,0 +1,116 @@
+# Glitter Developer Portfolio — LICENSE
+
+프로그램 명칭 : Glitter Developer Portfolio (glitter-dev_template)
+
+원본 프로그램 : 그누보드7용 Basic 템플릿 (sirsoft-basic)
+
+원저작자 : (주)에스아이알소프트 (SIRSOFT)
+
+수정 및 추가 개발 : Glitter.kr
+
+라이선스 : MIT License
+
+---
+
+## 저작권 및 2차 저작물 고지
+
+본 템플릿은 (주)에스아이알소프트에서 MIT 라이선스로 배포한 그누보드7용 Basic 템플릿(sirsoft-basic)을 기반으로 수정 및 확장한 2차 저작물입니다.
+
+원본 템플릿의 저작권은 (주)에스아이알소프트에 있으며, Glitter.kr이 독자적으로 작성한 코드와 창작성이 인정되는 수정·추가 부분의 저작권은 Glitter.kr에 있습니다.
+
+원본 소프트웨어의 저작권 고지와 MIT 라이선스는 그대로 유지됩니다.
+
+본 템플릿의 독자적인 수정·추가 개발 부분도 MIT 라이선스에 따라 배포합니다.
+
+Copyright (c) 2026 SIRSOFT
+
+Copyright (c) 2026 Glitter.kr
+
+---
+
+## MIT 라이선스 (한국어 번역)
+
+MIT 라이선스
+
+Copyright (c) 2026 (주)에스아이알소프트
+
+Copyright (c) 2026 Glitter.kr (수정 및 추가 개발 부분)
+
+이 소프트웨어와 관련 문서 파일(이하 "소프트웨어")의 복사본을 취득하는 모든 사람에게
+소프트웨어를 제한 없이 사용, 복사, 수정, 병합, 출판, 배포, 서브라이선스 허여 및/또는
+판매할 수 있는 권리를 무상으로 부여합니다. 다만, 소프트웨어를 제공받은 사람은 다음
+조건을 따라야 합니다:
+
+위 저작권 고지와 본 허가 고지는 소프트웨어의 모든 복사본 또는 상당 부분에 포함되어야
+합니다.
+
+소프트웨어는 "있는 그대로" 제공되며, 명시적이든 묵시적이든 어떠한 종류의 보증도 하지
+않습니다. 여기에는 상품성, 특정 목적에의 적합성 및 비침해에 대한 보증이 포함되나 이에
+국한되지 않습니다. 어떠한 경우에도 저작자 또는 저작권자는 소프트웨어나 소프트웨어의
+사용 또는 기타 거래로 인해 발생하는 계약, 불법행위 또는 기타 청구, 손해 또는 기타
+책임에 대해 책임을 지지 않습니다.
+
+---
+
+## MIT License (English Original)
+
+The MIT License (MIT)
+
+Copyright (c) 2026 SIRSOFT
+
+Copyright (c) 2026 Glitter.kr (modifications and additional original contributions)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+## Third-Party Software / 동봉된 제3자 소프트웨어
+
+이 템플릿은 아래 제3자 소프트웨어를 포함하거나 배포 과정에서 함께 제공할 수 있습니다.
+
+각 소프트웨어의 저작권과 라이선스는 해당 원저작자에게 귀속되며, 본 템플릿의 MIT 라이선스가 제3자 소프트웨어의 개별 라이선스를 대체하지 않습니다.
+
+| 소프트웨어 | 버전 | 라이선스 | 경로 |
+| --- | --- | --- | --- |
+| Font Awesome Free | 6.4.0 | 아이콘 CC BY 4.0 · 폰트 SIL OFL 1.1 · 코드 MIT | `dist/vendor/font-awesome/6.4.0/` |
+| Pretendard | 1.3.9 | SIL OFL 1.1 | `dist/vendor/pretendard/1.3.9/` |
+| browser-image-compression | 2.0.2 | MIT | `dist/vendor/browser-image-compression/2.0.2/` |
+
+각 제3자 소프트웨어의 라이선스 고지는 해당 배포 파일에 포함된 원본 라이선스 문서를 따릅니다.
+
+### Font Awesome CSS 재생성
+
+Font Awesome의 `css/all.inlined.css`는 배포본 CSS에 웹폰트를 data URI로 포함하도록 재생성한 파일입니다.
+
+재생성 절차는 `scripts/vendor-inline-css.mjs`에 정의되어 있으며, 원본 CSS(`css/all.min.css`)와 웹폰트 파일을 입력으로 사용합니다.
+
+해당 재생성 과정은 Font Awesome의 원본 저작권과 라이선스를 변경하지 않습니다.
+
+---
+
+## Redistribution and Attribution / 재배포 및 저작권 표시
+
+본 템플릿을 사용, 수정 또는 재배포하는 경우 다음 조건을 준수해야 합니다.
+
+1. 원본 SIRSOFT의 저작권 고지와 MIT 라이선스 허가 고지를 유지합니다.
+2. Glitter.kr의 수정·추가 개발 부분에 대한 저작권 고지와 MIT 라이선스 허가 고지를 유지합니다.
+3. 동봉된 제3자 소프트웨어의 개별 라이선스와 저작권 고지를 준수합니다.
+4. 본 템플릿을 수정하여 재배포할 수 있으며, 수정 사항의 저작권은 해당 기여자에게 귀속될 수 있습니다.
+
+본 라이선스는 소프트웨어의 사용, 수정, 상업적 이용 및 재배포를 허용하며, 원저작자나 수정 개발자의 보증 또는 책임을 의미하지 않습니다.

@@ -1,0 +1,434 @@
+/**
+ * ImageGallery 컴포넌트
+ *
+ * yet-another-react-lightbox 기반 이미지 갤러리 컴포넌트입니다.
+ * 줌, 슬라이드쇼, 전체화면, 다운로드 기능을 지원합니다.
+ *
+ * @module composite/ImageGallery
+ */
+
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+
+import { secretContentHeaders } from '../../support/secretContentHeaders';
+import { Button } from '../basic/Button';
+import { Icon } from '../basic/Icon';
+import { I } from '../basic/I';
+import { isDirectAssetUrl } from './assetOrigin';
+import { Div } from '../basic/Div';
+import { Img } from '../basic/Img';
+import { Span } from '../basic/Span';
+import type { EditorAttrs } from '../../types';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const G7Core = (window as any).G7Core;
+
+// G7Core.t() 번역 함수 참조
+const t = (key: string, params?: Record<string, string | number>) =>
+  G7Core?.t?.(key, params) ?? key;
+
+// ========== Types ==========
+
+export interface GalleryImage {
+  /** 이미지 표시용 URL (라이트박스에서 보여줄 이미지) */
+  src: string;
+  /** 다운로드용 URL (src와 다를 수 있음, 없으면 src 사용) */
+  downloadUrl?: string;
+  /** 이미지 제목/캡션 */
+  title?: string;
+  /** 이미지 설명 */
+  description?: string;
+  /** 썸네일 URL (없으면 src 사용) */
+  thumbnail?: string;
+  /** 원본 파일명 (다운로드 시 사용) */
+  filename?: string;
+  /** 다운로드 시 인증된 요청이 필요한지 여부 (기본값: false) */
+  downloadRequiresAuth?: boolean;
+}
+
+export interface ImageGalleryProps {
+  /** 갤러리에 표시할 이미지 배열 */
+  images: GalleryImage[];
+  /** 라이트박스 열기 여부 */
+  isOpen: boolean;
+  /** 라이트박스 닫기 콜백 */
+  onClose: () => void;
+  /** 시작 인덱스 (기본값: 0) */
+  startIndex?: number;
+  /** 줌 기능 활성화 (기본값: true) */
+  enableZoom?: boolean;
+  /** 슬라이드쇼 기능 활성화 (기본값: false) */
+  enableSlideshow?: boolean;
+  /** 전체화면 기능 활성화 (기본값: true) */
+  enableFullscreen?: boolean;
+  /** 이미지 카운터 표시 (기본값: true) */
+  showCounter?: boolean;
+  /** 다운로드 버튼 표시 (기본값: true) */
+  showDownload?: boolean;
+  /** 썸네일 네비게이션 표시 (기본값: true) */
+  showThumbnails?: boolean;
+  /** 커스텀 다운로드 핸들러 (제공 시 기본 다운로드 로직 대신 실행) */
+  onDownload?: (image: GalleryImage, index: number) => void;
+  /**
+   * 레이아웃 편집기 주입 속성 (편집 모드 전용).
+   * 본 컴포넌트는 서드파티 Lightbox 모달(`createPortal` 로 body 렌더)이라 런타임에는
+   * 인라인 DOM 이 없다. 편집 모드(editorAttrs 존재)에서는 캔버스 선택·속성 편집이
+   * 가능하도록 인라인 placeholder(이미지 썸네일 그리드)를 대신 렌더하고 거기에
+   * editorAttrs·id 를 부착한다. 런타임(editorAttrs 미주입)은 종전 Lightbox 동작 그대로.
+   *
+   */
+  editorAttrs?: EditorAttrs;
+
+  /** DOM id 속성 (레이아웃 편집기 코어 일괄 ID — 편집 placeholder 루트에 부착) */
+  id?: string;
+}
+
+// ========== Helper Functions ==========
+
+/**
+ * 인증된 이미지 다운로드 (Blob으로 변환 후 다운로드)
+ */
+const downloadAuthenticatedFile = async (url: string, filename: string): Promise<void> => {
+  try {
+    // 비밀글 첨부는 서버가 열람 권한을 재확인한다. globalHeaders 는 이 경로에 적용되지
+    // 않으므로 열람 확인 토큰을 여기서 직접 싣는다 (없으면 빈 객체라 영향 없음).
+    const blob = await G7Core.api.get(url, {
+      responseType: 'blob',
+      headers: secretContentHeaders(),
+    });
+
+    if (blob) {
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(objectUrl);
+    }
+  } catch (error) {
+    console.error('Failed to download file:', error);
+    G7Core?.toast?.error?.(t('common.download_failed'));
+  }
+};
+
+/**
+ * 일반 파일 다운로드
+ */
+const downloadFile = (url: string, filename: string): void => {
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.target = '_blank';
+  // 다른 출처 이미지는 download 가 무시되고 새 탭으로 열린다 — 새 탭이 window.opener 로 원래 탭을 바꾸지 못하게 한다(#757)
+  link.rel = 'noopener noreferrer';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+/**
+ * 이미지 다운로드 실행
+ */
+export const executeImageDownload = async (image: GalleryImage): Promise<void> => {
+  const downloadUrl = image.downloadUrl || image.src;
+  const filename = image.filename || image.title || 'image';
+
+  // 공개 자산 디스크(S3/CDN)의 교차 출처 URL 은 인증이 필요 없는 공개 자산이다.
+  // 인증 XHR 로 가져오면 CORS 미설정 CDN 에서 실패하므로 일반 링크 다운로드를 쓴다.
+  if (image.downloadRequiresAuth && !isDirectAssetUrl(downloadUrl)) {
+    await downloadAuthenticatedFile(downloadUrl, filename);
+  } else {
+    downloadFile(downloadUrl, filename);
+  }
+};
+
+// ========== Custom Download Button Component ==========
+
+interface DownloadButtonProps {
+  image: GalleryImage;
+  index: number;
+  onDownload?: (image: GalleryImage, index: number) => void;
+}
+
+const DownloadButton: React.FC<DownloadButtonProps> = ({ image, index, onDownload }) => {
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    if (onDownload) {
+      onDownload(image, index);
+      return;
+    }
+
+    setIsDownloading(true);
+    try {
+      await executeImageDownload(image);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  return (
+    <Button
+      type="button"
+      onClick={handleDownload}
+      disabled={isDownloading}
+      className="yarl__button flex items-center justify-center"
+      aria-label={t('common.download')}
+      title={t('common.download')}
+    >
+      {isDownloading ? (
+        <I className="fa-solid fa-spinner fa-spin text-white" />
+      ) : (
+        <I className="fa-solid fa-download text-white" />
+      )}
+    </Button>
+  );
+};
+
+// ========== Main Component ==========
+
+export const ImageGallery: React.FC<ImageGalleryProps> = ({
+  images,
+  isOpen,
+  onClose,
+  startIndex = 0,
+  enableZoom = true,
+  enableSlideshow = false,
+  enableFullscreen = true,
+  showCounter = true,
+  showDownload = true,
+  showThumbnails = true,
+  onDownload,
+  editorAttrs,
+  id,
+}) => {
+  const [currentIndex, setCurrentIndex] = useState(startIndex);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const currentIndexRef = useRef(startIndex);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const touchStartXRef = useRef<number | null>(null);
+  const currentImage = images[currentIndex] ?? images[0];
+
+  useEffect(() => {
+    if (isOpen) {
+      const nextIndex = Math.max(0, Math.min(startIndex, Math.max(0, images.length - 1)));
+      currentIndexRef.current = nextIndex;
+      setCurrentIndex(nextIndex);
+      setZoomLevel(1);
+      setIsPlaying(enableSlideshow);
+    }
+  }, [enableSlideshow, isOpen, startIndex, images.length]);
+
+  useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
+
+  useEffect(() => {
+    if (!isOpen || !enableSlideshow || !isPlaying || images.length < 2) return;
+    const timer = window.setInterval(() => {
+      setCurrentIndex((value) => (value + 1) % images.length);
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [enableSlideshow, images.length, isOpen, isPlaying]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    closeButtonRef.current?.focus();
+    return () => {
+      setIsPlaying(false);
+      setIsFullscreen(false);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleFullscreenChange = () => setIsFullscreen(document.fullscreenElement === dialogRef.current);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, [isOpen]);
+
+  const movePrevious = useCallback(() => {
+    setCurrentIndex((value) => Math.max(0, value - 1));
+    setZoomLevel(1);
+  }, []);
+
+  const moveNext = useCallback(() => {
+    setCurrentIndex((value) => Math.min(images.length - 1, value + 1));
+    setZoomLevel(1);
+  }, [images.length]);
+
+  const toggleFullscreen = useCallback(async () => {
+    if (!dialogRef.current) return;
+    try {
+      if (document.fullscreenElement === dialogRef.current) {
+        await document.exitFullscreen();
+      } else if (dialogRef.current.requestFullscreen) {
+        await dialogRef.current.requestFullscreen();
+      }
+    } catch {
+      setIsFullscreen(false);
+    }
+  }, []);
+
+  const handlePointerDown = useCallback((event: React.PointerEvent<HTMLImageElement>) => {
+    touchStartXRef.current = event.clientX;
+  }, []);
+
+  const handlePointerUp = useCallback((event: React.PointerEvent<HTMLImageElement>) => {
+    const startX = touchStartXRef.current;
+    touchStartXRef.current = null;
+    if (startX === null || Math.abs(event.clientX - startX) < 40) return;
+    if (event.clientX < startX) moveNext();
+    else movePrevious();
+  }, [moveNext, movePrevious]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+      if (event.key === 'ArrowLeft') movePrevious();
+      if (event.key === 'ArrowRight') moveNext();
+      if (event.key === '+' || event.key === '=') setZoomLevel((value) => Math.min(3, value + 1));
+      if (event.key === '-' || event.key === '_') setZoomLevel((value) => Math.max(1, value - 1));
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, moveNext, movePrevious, onClose]);
+
+  // 편집 모드(편집기 캔버스) — Lightbox 모달은 인라인 DOM 이 없어 선택·편집 불가.
+  // editorAttrs 가 주입되면 인라인 placeholder(썸네일 그리드)를 대신 렌더해
+  // 캔버스에서 선택·속성 편집이 가능하게 한다. 런타임(editorAttrs 미주입)은 미진입.
+  // (Hooks 규칙 — 모든 hook 호출 이후에 분기 return)
+  if (editorAttrs) {
+    const previewImages = (images ?? []).slice(0, 4);
+    return (
+      <Div
+        id={id}
+        className="grid grid-cols-2 gap-2 p-3 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800"
+        {...editorAttrs}
+      >
+        {previewImages.length > 0 ? (
+          previewImages.map((image, index) => (
+            <Img
+              key={index}
+              src={image.thumbnail || image.src}
+              alt={image.title || ''}
+              className="w-full aspect-square object-cover rounded bg-gray-200 dark:bg-gray-700"
+            />
+          ))
+        ) : (
+          <Div className="col-span-2 flex items-center justify-center py-6 text-sm text-gray-500 dark:text-gray-400">
+            <I className="fa-regular fa-images mr-2" />
+            {t('editor.component.image_gallery')}
+          </Div>
+        )}
+      </Div>
+    );
+  }
+
+  return (
+    <Div className="g7-image-gallery-overlay" role="dialog" aria-modal="true" aria-label={t('shop.view_image')} onClick={onClose}>
+      <Div ref={dialogRef} className={`g7-image-gallery-dialog ${isFullscreen ? 'g7-image-gallery-dialog-fullscreen' : ''}`} onClick={(event) => event.stopPropagation()}>
+        <Div className="g7-image-gallery-toolbar">
+          {showCounter && <Span className="text-white text-sm">{currentIndex + 1} / {images.length}</Span>}
+          <Div className="flex items-center gap-2">
+            {enableZoom && (
+              <>
+                <Button type="button" onClick={() => setZoomLevel((value) => Math.max(1, value - 1))} className="text-white px-2 py-2" aria-label={t('common.zoom_out')} disabled={zoomLevel <= 1}>
+                  <Icon name="minus" />
+                </Button>
+                <Button type="button" onClick={() => setZoomLevel((value) => Math.min(3, value + 1))} className="text-white px-2 py-2" aria-label={t('common.zoom_in')} disabled={zoomLevel >= 3}>
+                  <Icon name="plus" />
+                </Button>
+              </>
+            )}
+            {enableSlideshow && images.length > 1 && (
+              <Button type="button" onClick={() => setIsPlaying((value) => !value)} className="text-white px-2 py-2" aria-label={isPlaying ? t('common.pause') : t('common.play')}>
+                <Icon name={isPlaying ? 'pause' : 'play'} />
+              </Button>
+            )}
+            {enableFullscreen && (
+              <Button type="button" onClick={toggleFullscreen} className="text-white px-2 py-2" aria-label={isFullscreen ? t('common.exit_fullscreen') : t('common.fullscreen')}>
+                <Icon name={isFullscreen ? 'compress' : 'expand'} />
+              </Button>
+            )}
+            {showDownload && currentImage && <DownloadButton image={currentImage} index={currentIndex} onDownload={onDownload} />}
+            <Button ref={closeButtonRef} type="button" onClick={onClose} className="text-white px-3 py-2" aria-label={t('common.close')}>
+              <Icon name="x" />
+            </Button>
+          </Div>
+        </Div>
+        <Div className="g7-image-gallery-stage">
+          <Button type="button" onClick={movePrevious} disabled={currentIndex === 0} className="g7-image-gallery-nav" aria-label={t('common.previous')}>
+            <Icon name="chevron-left" />
+          </Button>
+          <Img src={currentImage?.src ?? ''} alt={currentImage?.title ?? ''} className={`g7-image-gallery-image g7-image-gallery-zoom-${zoomLevel * 100}`} onPointerDown={handlePointerDown} onPointerUp={handlePointerUp} draggable={false} />
+          <Button type="button" onClick={moveNext} disabled={currentIndex >= images.length - 1} className="g7-image-gallery-nav" aria-label={t('common.next')}>
+            <Icon name="chevron-right" />
+          </Button>
+        </Div>
+        {showThumbnails && images.length > 1 && (
+          <Div className="g7-image-gallery-thumbnails">
+            {images.map((image, index) => (
+              <Button key={image.src + index} type="button" onClick={() => setCurrentIndex(index)} className={`g7-image-gallery-thumbnail ${index === currentIndex ? 'g7-image-gallery-thumbnail-active' : ''}`} aria-label={image.title ?? `${t('shop.image')} ${index + 1}`}>
+                <Img src={image.thumbnail ?? image.src} alt="" className="w-full h-full object-cover" />
+              </Button>
+            ))}
+          </Div>
+        )}
+      </Div>
+    </Div>
+  );
+};
+
+// ========== Utility Hook ==========
+
+/**
+ * ImageGallery를 쉽게 사용하기 위한 커스텀 훅
+ *
+ * @example
+ * const { openGallery, galleryProps } = useImageGallery();
+ *
+ * // 이미지 클릭 시
+ * <img onClick={() => openGallery(images, 0)} />
+ *
+ * // 컴포넌트 렌더링
+ * <ImageGallery {...galleryProps} />
+ */
+export const useImageGallery = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [images, setImages] = useState<GalleryImage[]>([]);
+  const [startIndex, setStartIndex] = useState(0);
+
+  const openGallery = useCallback((galleryImages: GalleryImage[], index = 0) => {
+    setImages(galleryImages);
+    setStartIndex(index);
+    setIsOpen(true);
+  }, []);
+
+  const closeGallery = useCallback(() => {
+    setIsOpen(false);
+  }, []);
+
+  return {
+    isOpen,
+    openGallery,
+    closeGallery,
+    galleryProps: {
+      images,
+      isOpen,
+      onClose: closeGallery,
+      startIndex,
+    },
+  };
+};
+
+ImageGallery.displayName = 'ImageGallery';
+
+export default ImageGallery;
